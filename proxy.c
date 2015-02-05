@@ -3,6 +3,10 @@
  *
  */
 
+/*
+* count, i, hp, haddrp, tid, args
+*/
+
 #include <stdio.h>
 #include "csapp.h"
 #include <pthread.h>
@@ -52,7 +56,7 @@ int main(int argc, char *argv[])
   int *args;
   
   if (argc < 2) {
-    printf("Usage: ./%s port [debug] [webServerPort]\n", argv[0]);
+    printf("Usage: %s port [debug] [webServerPort]\n", argv[0]);
     exit(1);
   }
   if(argc == 4)
@@ -101,6 +105,12 @@ int main(int argc, char *argv[])
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
     
     /* you have to write the code to process this new client request */
+
+    /* ssize_t Read(int fd, void *buf, size_t count); */
+    char * buf;
+    Read(connfd, buf, 100);
+    printf("Here's what comes out: %s", buf);
+
 
     /* create a new thread (or two) to process the new connection */
 
