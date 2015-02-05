@@ -95,23 +95,23 @@ int main(int argc, char *argv[])
      to the files */
   
   pthread_mutex_init(&mutex, NULL);
-  
   while(1) {
-
     clientlen = sizeof(clientaddr);
 
     /* accept a new connection from a client here */
 
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    
+    fprintf(stderr, "\n Here's what the connfd value is: %d \n", connfd);
     /* you have to write the code to process this new client request */
 
     /* ssize_t Read(int fd, void *buf, size_t count); */
-    char * buf;
-    Read(connfd, buf, 100);
-    printf("Here's what comes out: %s", buf);
-
-
+    char * buf = malloc(32);
+    
+    if (connfd > 0){
+      Read(connfd, buf, 64);
+      fprintf(stderr, "\nHere's what comes out: %s\n", buf);
+    }
+    
     /* create a new thread (or two) to process the new connection */
 
   }
