@@ -110,18 +110,19 @@ int main(int argc, char *argv[])
     /* you have to write the code to process this new client request */
 
     /* ssize_t Read(int fd, void *buf, size_t count); */
-    /* just to show that reading works
-    char * buf = malloc(64);
+    // just to show that reading works
+    /*
+    char * buf = malloc(2048);
     
     if (connfd > 0){
-      Read(connfd, buf, 64);
+      Read(connfd, buf, 2048);
       fprintf(stderr, "\nHere's what comes out: %s\n", buf);
     }
     */
     
     /* create a new thread (or two) to process the new connection */
-    
-    Pthread_create(&tid, NULL, threadStart, connfd);
+    int newargv[] = {connfd, serverPort};
+    Pthread_create(&tid, NULL, webTalk, newargv);
 
     /*
     if(Pthread_create(&tid, NULL, threadStart, connfd)){
@@ -148,21 +149,25 @@ int main(int argc, char *argv[])
 * Reads in browser requests (RIO)
 * Calls parseAddres
 * Calls webTalk
+* Closes connfd
 */
-
+/*
 void * threadStart(void * connfd_ptr){
-    fprintf(stderr, "\nI'm at the top of threadStart\n");
+    //fprintf(stderr, "\nI'm at the top of threadStart\n");
     int connfd = connfd_ptr; //not actually a pointer, but two implicit casts cancel
-    fprintf(stderr, "\nHere is the value of connfd: %d", connfd);
-    fprintf(stderr, "\nI'm after int connfd\n");
+    //fprintf(stderr, "\nHere is the value of connfd: %d", connfd);
+    //fprintf(stderr, "\nI'm after int connfd\n");
     Pthread_detach(pthread_self());
+
     //Free(connfd_ptr);
     //echo_r(connfd);
+
+    webTalk();
 
     Close(connfd);
   return NULL;
 }
-
+*/
 /* a possibly handy function that we provide, fully written */
 
 /* ================================================================
@@ -227,9 +232,13 @@ void *webTalk(void* args)
   char slash[10];
   strcpy(slash, "/");
   
+  //int *pp = args[1];
+  //fprtinf(stderr, "\npp is: %d\n", pp);
+
   clientfd = ((int*)args)[0];
   serverPort = ((int*)args)[1];
-  free(args);
+  //fprintf(stderr, "\nIn webTalk serverPort is: %d\n", serverPort);
+  //free(args);
   
   Rio_readinitb(&client, clientfd);
   
