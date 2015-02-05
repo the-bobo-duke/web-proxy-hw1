@@ -143,6 +143,13 @@ int main(int argc, char *argv[])
 * =================================================================
 */
 
+/*
+* Sets up thread 
+* Reads in browser requests (RIO)
+* Calls parseAddres
+* Calls webTalk
+*/
+
 void * threadStart(void * connfd_ptr){
     fprintf(stderr, "\nI'm at the top of threadStart\n");
     int connfd = connfd_ptr; //not actually a pointer, but two implicit casts cancel
@@ -197,7 +204,10 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 	*serverPort = atoi(strtok_r(NULL, "/",&saveptr));
 }
 
-
+/* ================================================================
+* webTalk FUNCTION - PROCESS GET REQUESTS, PASS CONNECT REQUESTS
+* =================================================================
+*/
 
 /* this is the function that I spawn as a thread when a new
    connection is accepted */
