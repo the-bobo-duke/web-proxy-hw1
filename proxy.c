@@ -20,6 +20,8 @@
  * function declarations
  *============================================================*/
 
+void * threadStart(void * connfd_ptr);
+
 int  find_target_address(char * uri,
 			 char * target_address,
 			 char * path,
@@ -80,7 +82,10 @@ int main(int argc, char *argv[])
 
 
   /* start listening on proxy port */
-
+/* ================================================================
+* START LISTENING ON PROXY PORT
+* =================================================================
+*/
   listenfd = Open_listenfd(proxyPort);
 
   optval = 1;
@@ -101,19 +106,29 @@ int main(int argc, char *argv[])
     /* accept a new connection from a client here */
 
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    fprintf(stderr, "\n Here's what the connfd value is: %d \n", connfd);
+    
     /* you have to write the code to process this new client request */
 
     /* ssize_t Read(int fd, void *buf, size_t count); */
-    char * buf = malloc(32);
+    /* just to show that reading works
+    char * buf = malloc(64);
     
     if (connfd > 0){
       Read(connfd, buf, 64);
       fprintf(stderr, "\nHere's what comes out: %s\n", buf);
     }
+    */
     
     /* create a new thread (or two) to process the new connection */
+    
+    Pthread_create(&tid, NULL, threadStart, connfd);
 
+    /*
+    if(Pthread_create(&tid, NULL, threadStart, connfd)){
+      fprintf(stderr, "\nError making thread\n");
+      return EXIT_FAILURE;
+    }
+    */
   }
   
   if(debug) Close(debugfd);
@@ -123,7 +138,30 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+/* ================================================================
+* threadStart FUNCTION - START PROCESSING BROWSER REQ'S
+* =================================================================
+*/
+
+void * threadStart(void * connfd_ptr){
+    fprintf(stderr, "\nI'm at the top of threadStart\n");
+    int connfd = connfd_ptr; //not actually a pointer, but two implicit casts cancel
+    fprintf(stderr, "\nHere is the value of connfd: %d", connfd);
+    fprintf(stderr, "\nI'm after int connfd\n");
+    Pthread_detach(pthread_self());
+    //Free(connfd_ptr);
+    //echo_r(connfd);
+
+    Close(connfd);
+  return NULL;
+}
+
 /* a possibly handy function that we provide, fully written */
+
+/* ================================================================
+* parseAddress FUNCTION
+* =================================================================
+*/
 
 void parseAddress(char* url, char* host, char** file, int* serverPort)
 {
