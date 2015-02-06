@@ -236,25 +236,19 @@ void *webTalk(void* args)
   serverPort = ((int*)args)[1];
 
   //free(args);
-  fprintf(stderr, "\nIn webTalk before Rio_readinitb. clientfd: %d\n", clientfd);
+  
   Rio_readinitb(&client, clientfd);
+  //size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
   
-  fprintf(stderr, "In webTalk before Rio_readlineb\n");
+  Rio_readlineb(&client, buf1, MAXLINE);
   
-  Rio_readlineb(&client, buf1, 3);
-  fprintf(stderr, "\nIn webTalk after Rio_readlineb\n");
-
-  char first_char = buf1[1];
-  fprintf(stderr, "\nafter first_char assignment\n");
-  fprintf(stderr, "\n the value of first_char is: %s\n", first_char);
-
   // Determine protocol (CONNECT or GET)
-  fprintf(stderr, "\nbuf1[0]: %s\n", first_char);
+  fprintf(stderr, "\nbuf1: %s\n", buf1);
   
-  if (buf1[0] == "G"){
+  if (buf1[0] == 'G'){
     fprintf(stderr, "\nWe should process a GET request\n");
   }
-  else if (buf1[0] == "C"){
+  else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
   }
 
