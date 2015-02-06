@@ -139,35 +139,6 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-/* ================================================================
-* threadStart FUNCTION - START PROCESSING BROWSER REQ'S
-* =================================================================
-*/
-
-/*
-* Sets up thread 
-* Reads in browser requests (RIO)
-* Calls parseAddres
-* Calls webTalk
-* Closes connfd
-*/
-/*
-void * threadStart(void * connfd_ptr){
-    //fprintf(stderr, "\nI'm at the top of threadStart\n");
-    int connfd = connfd_ptr; //not actually a pointer, but two implicit casts cancel
-    //fprintf(stderr, "\nHere is the value of connfd: %d", connfd);
-    //fprintf(stderr, "\nI'm after int connfd\n");
-    Pthread_detach(pthread_self());
-
-    //Free(connfd_ptr);
-    //echo_r(connfd);
-
-    webTalk();
-
-    Close(connfd);
-  return NULL;
-}
-*/
 /* a possibly handy function that we provide, fully written */
 
 /* ================================================================
@@ -219,6 +190,14 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 
 /* you have to write a lot of it */
 
+/*
+* Sets up thread 
+* Reads in browser requests (RIO)
+* Calls parseAddres
+* Calls webTalk
+* Closes connfd
+*/
+
 void *webTalk(void* args)
 {
   int numBytes, lineNum, serverfd, clientfd, serverPort;
@@ -238,18 +217,23 @@ void *webTalk(void* args)
   //free(args);
   
   Rio_readinitb(&client, clientfd);
-  //size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
-  
-  Rio_readlineb(&client, buf1, MAXLINE);
-  
+  size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
+
   // Determine protocol (CONNECT or GET)
   fprintf(stderr, "\nbuf1: %s\n", buf1);
   
   if (buf1[0] == 'G'){
     fprintf(stderr, "\nWe should process a GET request\n");
+    // need to isolate the "1" in "HTTP/1.1" so we can change it to 0
+    fprintf(stderr, "\nthis should say 1: %c", buf1[rio_return-3]);
+    // -3 because: \n char, terminating null char, and rio_return is # bytes read
+    // but array indecies start at 0 not 1
   }
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
+  }
+  if (buf1[rio_return] == 1){
+    fprintf(stderr, "\n was equal to 1\n");
   }
 
   // GET: open connection to webserver (try several times, if necessary)
