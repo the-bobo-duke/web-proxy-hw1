@@ -214,17 +214,29 @@ void *webTalk(void* args)
   serverPort = ((int*)args)[1];
   int * serverPort_ptr = &serverPort;
   char * file_ptr = &file;
+  char * uri;
   //free(args);
   
   Rio_readinitb(&client, clientfd);
   size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
 
-  // extract uri for use in parseAddress
-    char * uri = strchr(buf1, 'h');
+  // Determine protocol (CONNECT or GET)
+  fprintf(stderr, "\nbuf1: %s\n", buf1);
+  
+  if (buf1[0] == 'G'){
+    fprintf(stderr, "\nWe should process a GET request\n");
+    // need to isolate the "1" in "HTTP/1.1" so we can change it to 0
+    fprintf(stderr, "\nthis should say 1: %c\n", buf1[rio_return-3]);
+    // -3 because: \n char, terminating null char, and rio_return is # bytes read
+    // but array indecies start at 0 not 1
+
+    // extract uri for use in parseAddress
+    if (rio_return > 0){
+    uri = strchr(buf1, 'h');
     strtok_r(uri, " ", &saveptr);
     fprintf(stderr, "\nuri is: %s\n", uri);
-
-  // call parseAddress to get hostname back
+    }
+    // call parseAddress to get hostname back
     //void parseAddress(char* url, char* host, char** file, int* serverPort)
     
     parseAddress(uri, host, file_ptr, serverPort_ptr);
@@ -234,16 +246,6 @@ void *webTalk(void* args)
     fprintf(stderr, "\n serverPort should still be 80: %d\n", serverPort);
     */
 
-  // Determine protocol (CONNECT or GET)
-  fprintf(stderr, "\nbuf1: %s\n", buf1);
-  
-  if (buf1[0] == 'G'){
-    fprintf(stderr, "\nWe should process a GET request\n");
-    // need to isolate the "1" in "HTTP/1.1" so we can change it to 0
-    fprintf(stderr, "\nthis should say 1: %c", buf1[rio_return-3]);
-    // -3 because: \n char, terminating null char, and rio_return is # bytes read
-    // but array indecies start at 0 not 1
-
 // GET: open connection to webserver (try several times, if necessary)
 
     serverfd = Socket(AF_INET, SOCK_STREAM, 0);
@@ -252,13 +254,52 @@ void *webTalk(void* args)
       return EXIT_FAILURE;
     }
 
-    struct hostent *server_ip = Gethostbyname(host);
-    //fprintf(stderr, "\nname of server is: %s\n", Gethostbyname(host)->h_name);
-    //IN_ADDR thing = *(ULONG*)hostent->h_addr_list[0];
-    //fprintf(stderr, "\nIP address of server is: %s\n", 
-    //  (Gethostbyname(host)->h_addr)); 
-    
+    /*
+    int i;
+    struct in_addr **addr_list;
+    fprintf(stderr, "\nOfficial name is: %s\n", server_he->h_name);
+    fprintf(stderr, "\n    IP addresses: ");
+    addr_list = (struct in_addr **)server_he->h_addr_list;
+    for(i = 0; addr_list[i] != NULL; i++) {
+        fprintf(stderr, "\n%s ", inet_ntoa(*addr_list[i]));
+    }
+    */
 
+    /* THIS COULD be repurposed maybe, to give an address list to server_sa_in
+    int i;
+    struct sockaddr **addr_list;
+    //addr_list = (struct sockaddr_in **)server_he->h_addr_list;
+    addr_list = (struct sockaddr_in) server_he->h_addr_list;
+    fprintf(stderr, "\n in front of for loop \n");
+    for (i = 0; addr_list[i] != NULL; i++){
+      fprintf(stderr, "\n inside for loop\n");
+      if ((Connect(serverfd, addr_list[i], sizeof(*addr_list[i]))) >= 0){
+        fprintf(stderr, "\ninside if statement\n");
+        break;  
+      }
+    }
+    fprintf(stderr, "\n outside of for loop\n");
+    */
+
+    struct hostent *server_he = Gethostbyname(host);
+    struct sockaddr_in server_sa_in;
+
+    memcpy(&server_sa_in.sin_addr, server_he->h_addr_list[0], server_he->h_length);
+    server_sa_in.sin_family = AF_INET;
+    server_sa_in.sin_port = htons(serverPort);
+
+    fprintf(stderr, "\nvalue of Connect call is: %d\n", 
+      (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0));
+
+    /*
+    if (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0){
+      return EXIT_FAILURE;
+    }
+    else {
+      fprintf(stderr, "\nsuccess\n");
+    }*/
+
+    
 
   }
   else if (buf1[0] == 'C'){
