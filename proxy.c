@@ -13,7 +13,9 @@
 
 #define   FILTER_FILE   "proxy.filter"
 #define   LOG_FILE      "proxy.log"
-#define   DEBUG_FILE	"proxy.debug"
+#define   DEBUG_FILE	  "proxy.debug"
+#define   MAX_HEADER    8192
+// set max size of 8192 bytes for our HTTP headers based on Apache default limit
 
 
 /*============================================================
@@ -230,6 +232,9 @@ void *webTalk(void* args)
     // -3 because: \n char, terminating null char, and rio_return is # bytes read
     // but array indecies start at 0 not 1
 
+    //copy buf1 to buf2 so we can later recover full HTTP Header
+    memcpy(&buf2, buf1, MAXLINE);
+
     // extract uri for use in parseAddress
     if (rio_return > 0){
     uri = strchr(buf1, 'h');
@@ -254,33 +259,6 @@ void *webTalk(void* args)
       return EXIT_FAILURE;
     }
 
-    /*
-    int i;
-    struct in_addr **addr_list;
-    fprintf(stderr, "\nOfficial name is: %s\n", server_he->h_name);
-    fprintf(stderr, "\n    IP addresses: ");
-    addr_list = (struct in_addr **)server_he->h_addr_list;
-    for(i = 0; addr_list[i] != NULL; i++) {
-        fprintf(stderr, "\n%s ", inet_ntoa(*addr_list[i]));
-    }
-    */
-
-    /* THIS COULD be repurposed maybe, to give an address list to server_sa_in
-    int i;
-    struct sockaddr **addr_list;
-    //addr_list = (struct sockaddr_in **)server_he->h_addr_list;
-    addr_list = (struct sockaddr_in) server_he->h_addr_list;
-    fprintf(stderr, "\n in front of for loop \n");
-    for (i = 0; addr_list[i] != NULL; i++){
-      fprintf(stderr, "\n inside for loop\n");
-      if ((Connect(serverfd, addr_list[i], sizeof(*addr_list[i]))) >= 0){
-        fprintf(stderr, "\ninside if statement\n");
-        break;  
-      }
-    }
-    fprintf(stderr, "\n outside of for loop\n");
-    */
-
     struct hostent *server_he = Gethostbyname(host);
     struct sockaddr_in server_sa_in;
 
@@ -300,20 +278,49 @@ void *webTalk(void* args)
       fprintf(stderr, "\n TCP success\n");
     }
 
+    /* GET: Transfer first header to webserver */
+    // initialize some string to hold the header
+    // write the first two lines (GET and Host: ) manually
+    // then iterate through the currently existing HTTP header req
+    // and add those lines to the string
+    // but look for a Proxy-Connection or a Connection
+    // and change those to "Proxy-Connection: close"
+    // end of the header is \r\n
+    // set max size of 8192 bytes for our headers based on Apache default limit
+
+    // buf2 has full GET ... HTTP/1.1 line in it. How to get rest of header?
+    // then need to modify header to suppress keep-alive
+
     
+
+    /*
+    //char hdr_to_send[MAX_HEADER];
+    //char first_lines[];
+    char str1 = "GET: http://";
+    char str2 = " HTTP/1.0\nHost: ";
+    fprintf(stderr, "\nsize of str1: %lu", sizeof(str1));
+    fprintf(stderr,  " size of str2: %lu", sizeof(str2)); 
+    fprintf(stderr, " size of host string: %lu\n", sizeof(host));
+    //strcat(first_lines, str1);
+    //strcat(first_lines, host);
+    //strcat(first_lines, str2);
+    //strcat(first_lines, host);
+     
+    //fprintf(stderr, "%s", first_lines);
+    */
+
+    // GET: Transfer remainder of the request
+
+    // GET: now receive the response
+
 
   }
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
+
+    // CONNECT: call a different function, securetalk, for HTTPS
+
   }
-
-  /* GET: Transfer first header to webserver */
-    
-  // GET: Transfer remainder of the request
-
-  // GET: now receive the response
-
-  // CONNECT: call a different function, securetalk, for HTTPS
 
 }
 
