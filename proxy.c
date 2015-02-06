@@ -288,16 +288,17 @@ void *webTalk(void* args)
     server_sa_in.sin_family = AF_INET;
     server_sa_in.sin_port = htons(serverPort);
 
+    /*
     fprintf(stderr, "\nvalue of Connect call is: %d\n", 
       (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0));
-
-    /*
+    */
+    
     if (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0){
       return EXIT_FAILURE;
     }
     else {
-      fprintf(stderr, "\nsuccess\n");
-    }*/
+      fprintf(stderr, "\n TCP success\n");
+    }
 
     
 
