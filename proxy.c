@@ -226,8 +226,13 @@ void *webTalk(void* args)
 
   // call parseAddress to get hostname back
     //void parseAddress(char* url, char* host, char** file, int* serverPort)
-    fprintf(stderr, "\nbefore parseAddress call\n");
+    
     parseAddress(uri, host, file_ptr, serverPort_ptr);
+    /*
+    fprintf(stderr, "\n host is: %s\n", host);
+    fprintf(stderr, "\n file path is: %s\n", file);
+    fprintf(stderr, "\n serverPort should still be 80: %d\n", serverPort);
+    */
 
   // Determine protocol (CONNECT or GET)
   fprintf(stderr, "\nbuf1: %s\n", buf1);
@@ -247,6 +252,12 @@ void *webTalk(void* args)
       return EXIT_FAILURE;
     }
 
+    struct hostent *server_ip = Gethostbyname(host);
+    //fprintf(stderr, "\nname of server is: %s\n", Gethostbyname(host)->h_name);
+    //IN_ADDR thing = *(ULONG*)hostent->h_addr_list[0];
+    //fprintf(stderr, "\nIP address of server is: %s\n", 
+    //  (Gethostbyname(host)->h_addr)); 
+    
 
 
   }
