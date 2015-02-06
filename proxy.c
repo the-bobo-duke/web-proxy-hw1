@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     
     if (connfd > 0){
       Read(connfd, buf, 2048);
-      fprintf(stderr, "\nHere's what comes out: %s\n", buf);
+      fprintf(stderr, "\nHere's what comes out: \n%s", buf);
     }
     */
     
@@ -231,18 +231,32 @@ void *webTalk(void* args)
   rio_t server, client;
   char slash[10];
   strcpy(slash, "/");
-  
-  //int *pp = args[1];
-  //fprtinf(stderr, "\npp is: %d\n", pp);
 
   clientfd = ((int*)args)[0];
   serverPort = ((int*)args)[1];
-  //fprintf(stderr, "\nIn webTalk serverPort is: %d\n", serverPort);
+
   //free(args);
-  
+  fprintf(stderr, "\nIn webTalk before Rio_readinitb. clientfd: %d\n", clientfd);
   Rio_readinitb(&client, clientfd);
   
+  fprintf(stderr, "In webTalk before Rio_readlineb\n");
+  
+  Rio_readlineb(&client, buf1, 3);
+  fprintf(stderr, "\nIn webTalk after Rio_readlineb\n");
+
+  char first_char = buf1[1];
+  fprintf(stderr, "\nafter first_char assignment\n");
+  fprintf(stderr, "\n the value of first_char is: %s\n", first_char);
+
   // Determine protocol (CONNECT or GET)
+  fprintf(stderr, "\nbuf1[0]: %s\n", first_char);
+  
+  if (buf1[0] == "G"){
+    fprintf(stderr, "\nWe should process a GET request\n");
+  }
+  else if (buf1[0] == "C"){
+    fprintf(stderr, "\nWe should process a CONNECT request\n");
+  }
 
   // GET: open connection to webserver (try several times, if necessary)
 
