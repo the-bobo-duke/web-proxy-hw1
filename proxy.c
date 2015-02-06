@@ -20,8 +20,6 @@
  * function declarations
  *============================================================*/
 
-void * threadStart(void * connfd_ptr);
-
 int  find_target_address(char * uri,
 			 char * target_address,
 			 char * path,
@@ -121,6 +119,7 @@ int main(int argc, char *argv[])
     */
     
     /* create a new thread (or two) to process the new connection */
+    
     int newargv[] = {connfd, serverPort};
     Pthread_create(&tid, NULL, webTalk, newargv);
 
@@ -213,11 +212,22 @@ void *webTalk(void* args)
 
   clientfd = ((int*)args)[0];
   serverPort = ((int*)args)[1];
-
+  int * serverPort_ptr = &serverPort;
+  char * file_ptr = &file;
   //free(args);
   
   Rio_readinitb(&client, clientfd);
   size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
+
+  // extract uri for use in parseAddress
+    char * uri = strchr(buf1, 'h');
+    strtok_r(uri, " ", &saveptr);
+    fprintf(stderr, "\nuri is: %s\n", uri);
+
+  // call parseAddress to get hostname back
+    //void parseAddress(char* url, char* host, char** file, int* serverPort)
+    fprintf(stderr, "\nbefore parseAddress call\n");
+    parseAddress(uri, host, file_ptr, serverPort_ptr);
 
   // Determine protocol (CONNECT or GET)
   fprintf(stderr, "\nbuf1: %s\n", buf1);
@@ -228,15 +238,21 @@ void *webTalk(void* args)
     fprintf(stderr, "\nthis should say 1: %c", buf1[rio_return-3]);
     // -3 because: \n char, terminating null char, and rio_return is # bytes read
     // but array indecies start at 0 not 1
+
+// GET: open connection to webserver (try several times, if necessary)
+
+    serverfd = Socket(AF_INET, SOCK_STREAM, 0);
+    if (serverfd < 0){
+      fprintf(stderr, "Error opening socket for serverfd");
+      return EXIT_FAILURE;
+    }
+
+
+
   }
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
   }
-  if (buf1[rio_return] == 1){
-    fprintf(stderr, "\n was equal to 1\n");
-  }
-
-  // GET: open connection to webserver (try several times, if necessary)
 
   /* GET: Transfer first header to webserver */
     
