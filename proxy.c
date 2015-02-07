@@ -290,27 +290,27 @@ void *webTalk(void* args)
 
     // buf2 has full GET ... HTTP/1.1 line in it. How to get rest of header?
     // then need to modify header to suppress keep-alive
-
-    fprintf(stderr, "buf 2 before while: %s\n", buf2);
-    fprintf(stderr, "buf3 before while: %s\n", buf3);
     
     int break_me = 0;
 
     while (break_me == 0){
       Rio_readlineb(&client, buf3, MAXLINE);
-      fprintf(stderr, "value of break_me: %d\n", break_me);
       if (buf3[0] == '\r' && buf3[1] == '\n'){
         ++break_me;
       }
       strcat(buf2, buf3); 
     }
-    fprintf(stderr, "\n======================AFTER WHILE LOOP\n");
-    fprintf(stderr, "buf 3: %s\n===========", buf3);
-    fprintf(stderr, "buf 2: \n%s", buf2);
-    fprintf(stderr, "======\n");
+    fprintf(stderr, "buf2 before suppression: \n%s", buf2);
+    
+    int size_to_erase = strlen("keep-alive");
+    char closeReplace[size_to_erase];
+    strcpy(closeReplace, " ");
+    strcpy(closeReplace, "close");
 
-
-
+    while ( strstr(buf2, "keep-alive") != NULL ){
+      strcpy( (strstr(buf2, "keep-alive")), closeReplace );
+    }
+    fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
 
     /*
     size_t rio_return2 = Rio_readlineb(&client, buf3, MAXLINE);
