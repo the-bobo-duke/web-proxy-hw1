@@ -230,7 +230,7 @@ void *webTalk(void* args)
   size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
 
   // Determine protocol (CONNECT or GET)
-  fprintf(stderr, "\nbuf1: %s\n", buf1);
+  fprintf(stderr, "\nBROWSER'S INITIAL REQ: %s\n", buf1);
   
   if (buf1[0] == 'G'){
     //fprintf(stderr, "\nWe should process a GET request\n");
@@ -352,7 +352,10 @@ void *webTalk(void* args)
 
     // GET: now receive the response
     // void *forwarder(void* args)
-    int args2[] = {clientfd, serverfd};
+    int *args2 = malloc(2 * sizeof(args2));
+    args2[0] = clientfd;
+    args2[1] = serverfd;
+    //int args2[] = {clientfd, serverfd};
     fprintf(stderr, "serverfd in webtalk: %d\n", serverfd);
     //pthread_t tid2;
     //Pthread_create(&tid2, NULL, &forwarder, args2);
@@ -366,8 +369,9 @@ void *webTalk(void* args)
     memcpy(&buf2, buf1, MAXLINE);
     
     if (rio_return > 0){
-    uri = strchr(buf1, 'w');    
-    strtok_r(uri, ":", &saveptr);
+    uri = strchr(buf1, ' ');
+    uri++;    
+    strtok_r(uri, " ", &saveptr);
     fprintf(stderr, "\nuri is: %s\n", uri);
     }
     if (uri != NULL){
@@ -375,8 +379,8 @@ void *webTalk(void* args)
     }
 
     fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
-    serverPort = 443;
-    fprintf(stderr, "we change serverPort to: %d\n", serverPort);
+    //serverPort = 443;
+    //fprintf(stderr, "we change serverPort to: %d\n", serverPort);
     fprintf(stderr, "Host is: %s\n", host);
 
     if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
@@ -390,12 +394,15 @@ void *webTalk(void* args)
     /* spawn a thread to pass bytes from origin server through to client */
     /* now pass bytes from client to server */
 
-    int args3[] = {clientfd, serverfd};
+    //int args3[] = {clientfd, serverfd};
+    int * args3 = malloc(2 * sizeof(args3));
+    args3[0] = clientfd;
+    args3[1] = serverfd;
     forwarder_SSL(args3);
     }
 
     else {
-      fprintf(stderr, "error line: %d\n", __LINE__);
+      fprintf(stderr, "error Open_clientfd for SSL: line: %d\n", __LINE__);
     }
 
     //secureTalk(clientfd, client, host, version, serverPort);
@@ -458,17 +465,19 @@ void *forwarder_SSL(void* args){
   clientfd = ((int*)args)[0]; 
   serverfd = ((int*)args)[1];
 
-  while ( (numBytes = Rio_readp(serverfd, buf1, MAXLINE)) >=0 ){
+  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >=0 ){
     if ( numBytes > 0 ){
       Rio_writen(clientfd, buf1, MAXLINE);
     }
     else if (numBytes == 0){
-      shutdown(clientfd, 1);
+      //shutdown(clientfd, 1);
     }
     else if (numBytes < 0){
       fprintf(stderr, "error in forwarder_SSL, LINE: %d\ncall shutdown(serverfd)?", __LINE__);
     }
   }
+  Close(clientfd);
+  Close(serverfd);
 
 }
 
@@ -481,8 +490,10 @@ void *forwarder(void* args)
   serverfd = ((int*)args)[1];
   fprintf(stderr, "serverfd in forwarder: %d\n", serverfd);
   memset(buf1, 0, sizeof(buf1)); // zero out buf1
-  //rio_t server;
+
   //Pthread_detach(pthread_self());
+
+  //rio_t server;
   //free(args);
 
   //Rio_readinitb(&client, clientfd);
