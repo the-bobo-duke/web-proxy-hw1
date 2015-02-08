@@ -34,6 +34,7 @@ void  format_log_entry(char * logstring,
 		       int size);
 		       
 void *forwarder(void* args);
+void *forwarder_SSL(void* args);
 void *webTalk(void* args);
 void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int serverPort);
 void ignore();
@@ -281,7 +282,7 @@ void *webTalk(void* args)
       return EXIT_FAILURE;
     }
     else {
-      fprintf(stderr, "\n TCP success\n");
+      fprintf(stderr, "\n TCP success (GET logic line: %d)\n", __LINE__);
     }
 
     /* GET: Transfer first header to webserver */
@@ -358,8 +359,26 @@ void *webTalk(void* args)
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
 
+    memcpy(&buf2, buf1, MAXLINE);
+    
+    if (rio_return > 0){
+    uri = strchr(buf1, 'w');    
+    strtok_r(uri, ":", &saveptr);
+    fprintf(stderr, "\nuri is: %s\n", uri);
+    }
+
+    parseAddress(uri, host, file_ptr, serverPort_ptr);
+
+    secureTalk(clientfd, client, host, version, serverPort);
+
     // CONNECT: call a different function, securetalk, for HTTPS
 
+  }
+
+  else if (buf1[0] == " "){
+    //EOF detected
+    //shutdown(serverfd, 1);
+    fprintf(stderr, "EOF detected on line: %d\ncall shutdown(serverfd)?", __LINE__);
   }
 
 }
@@ -376,6 +395,9 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   char buf1[MAXLINE], buf2[MAXLINE];
   pthread_t tid;
   int *args;
+  char host[MAXLINE];
+  
+  strcpy(host, inHost);
 
   if (serverPort == proxyPort)
     serverPort = 443;
@@ -383,17 +405,66 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   /* Open connecton to webserver */
   /* clientfd is browser */
   /* serverfd is server */
-  
-  
-  /* let the client know we've connected to the server */
 
-  /* spawn a thread to pass bytes from origin server through to client */
+    fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
+    serverPort = 443;
+    fprintf(stderr, "we change serverPort to: %d\n", serverPort);
+    fprintf(stderr, "Host is: %s\n", host);
 
-  /* now pass bytes from client to server */
+    if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
+      fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+        /* let the client know we've connected to the server */
+
+    char SSL_msg[MAXLINE];
+    strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
+    Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
+
+    /* spawn a thread to pass bytes from origin server through to client */
+    /* now pass bytes from client to server */
+
+    int args3[] = {clientfd, serverfd};
+    forwarder_SSL(args3);
+    }
+
+    else {
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+
+    /*
+
+    //write to serverfd to send data to server
+    int n;
+    n = Rio_writen(serverfd, buf2, MAXLINE);
+    if (n < 0){
+      fprintf(stderr, "error sending get request to server\n");
+    }
+
+    */
 
 }
 
 /* this function is for passing bytes from origin server to client */
+
+void *forwarder_SSL(void* args){
+  int numBytes, lineNum, serverfd, clientfd;
+  int byteCount = 0;
+  char buf1[MAXLINE];
+  clientfd = ((int*)args)[0]; 
+  serverfd = ((int*)args)[1];
+
+  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >=0 ){
+    if ( numBytes > 0 ){
+      Rio_writen(clientfd, buf1, MAXLINE);
+    }
+    else if (numBytes == 0){
+      shutdown(clientfd, 1);
+    }
+    else if (numBytes < 0){
+      fprintf(stderr, "error in forwarder_SSL, LINE: %d\ncall shutdown(serverfd)?", __LINE__);
+    }
+  }
+
+}
 
 void *forwarder(void* args)
 {
@@ -409,8 +480,6 @@ void *forwarder(void* args)
 
   //Rio_readinitb(&client, clientfd);
   Rio_readinitb(&server, serverfd);
-//  size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
-
 
   while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
     //while( 1 ) {
@@ -421,28 +490,13 @@ void *forwarder(void* args)
         //Close(clientfd);
         //Close(serverfd);
         shutdown(clientfd, 1);
-        //return 0;
+        //return 0; - no, this is a bad change, makes pages load very slowly / not finish
       }
       else if (numBytes < 0){
-        fprintf(stderr, "\nerror in forwarder,  numBytes < 0. numBytes is: %d\n", numBytes);
-        shutdown(serverfd, 1);
+        fprintf(stderr, "\nerror in forwarder, call shutdown(serverfd)? numBytes is: %d\n", numBytes);
+        //shutdown(serverfd, 1);
       }
-      //Rio_writen(clientfd, buf1, MAXLINE);
-/*
-    numBytes = Rio_readn(serverfd, buf1, sizeof(buf1));
-    byteCount += numBytes;
-    if (numBytes < 0){
-      fprintf(stderr, "error receiving server's response to get request\n");
-    }
-    //fprintf(stderr, "\nbuf3 after calling Rio_readn: \n%s\n", buf3);
-    
-    numBytes = Rio_writen(clientfd, buf1, sizeof(buf1));
-    if (numBytes < 0 ){
-      fprintf(stderr, "error writing to clientfd in http get logic \n");
-    }
 
-    fprintf(stderr, "\ncurrent byteCount: %d", byteCount);
-*/
     /* serverfd is for talking to the web server */
     /* clientfd is for talking to the browser */
     
