@@ -244,7 +244,8 @@ void *webTalk(void* args)
 
     // extract uri for use in parseAddress
     if (rio_return > 0){
-    uri = strchr(buf1, 'h');
+    uri = strchr(buf1, ' ');
+    uri++;
     strtok_r(uri, " ", &saveptr);
     fprintf(stderr, "\nuri is: %s\n", uri);
     }
@@ -392,17 +393,32 @@ void *webTalk(void* args)
     Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
 
     /* spawn a thread to pass bytes from origin server through to client */
-    /* now pass bytes from client to server */
-
+    
     //int args3[] = {clientfd, serverfd};
     int * args3 = malloc(2 * sizeof(args3));
     args3[0] = clientfd;
     args3[1] = serverfd;
-    forwarder_SSL(args3);
+    pthread_t tid3;
+    Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
+    //forwarder_SSL(args3);
     }
 
     else {
       fprintf(stderr, "error Open_clientfd for SSL: line: %d\n", __LINE__);
+    }
+
+    /* now pass bytes from client to server */
+
+    while ( (numBytes = Rio_readn(clientfd, buf1, MAXLINE)) >=0 ){
+      if ( numBytes > 0 ){
+        Rio_writen(serverfd, buf1, MAXLINE);
+      }
+      else if (numBytes == 0){
+        shutdown(serverfd, 1);
+      }
+      else if (numBytes < 0){
+        fprintf(stderr, "error in passing bytes from B to S: LINE: %d\ncall shutdown(serverfd)?", __LINE__);
+      }
     }
 
     //secureTalk(clientfd, client, host, version, serverPort);
@@ -465,6 +481,8 @@ void *forwarder_SSL(void* args){
   clientfd = ((int*)args)[0]; 
   serverfd = ((int*)args)[1];
 
+  Pthread_detach(pthread_self());
+
   while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >=0 ){
     if ( numBytes > 0 ){
       Rio_writen(clientfd, buf1, MAXLINE);
@@ -476,6 +494,7 @@ void *forwarder_SSL(void* args){
       fprintf(stderr, "error in forwarder_SSL, LINE: %d\ncall shutdown(serverfd)?", __LINE__);
     }
   }
+
   Close(clientfd);
   Close(serverfd);
 
@@ -505,6 +524,16 @@ void *forwarder(void* args)
     //while( 1 ) {
       if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
+        /*
+        FILE *f = fopen("file.txt", "w");
+        if (f == NULL)
+        {
+          printf("Error opening file!\n");
+          exit(1);
+        }
+
+        fprintf(f, "Some text: %s\n", buf1);
+        fclose(f);*/
         memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
       else if (numBytes == 0){
