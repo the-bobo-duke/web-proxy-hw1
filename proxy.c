@@ -231,9 +231,9 @@ void *webTalk(void* args)
   fprintf(stderr, "\nbuf1: %s\n", buf1);
   
   if (buf1[0] == 'G'){
-    fprintf(stderr, "\nWe should process a GET request\n");
+    //fprintf(stderr, "\nWe should process a GET request\n");
     // need to isolate the "1" in "HTTP/1.1" so we can change it to 0
-    fprintf(stderr, "\nthis should say 1: %c\n", buf1[rio_return-3]);
+    //fprintf(stderr, "\nthis should say 1: %c\n", buf1[rio_return-3]);
     // -3 because: \n char, terminating null char, and rio_return is # bytes read
     // but array indecies start at 0 not 1
 
@@ -301,13 +301,13 @@ void *webTalk(void* args)
 
     while (break_me == 0){
       Rio_readlineb(&client, buf3, MAXLINE);
-      strcat(buf2, buf3);
       if (buf3[0] == '\r' && buf3[1] == '\n'){
         ++break_me;
       } 
+      strcat(buf2, buf3);
     }
 
-    //fprintf(stderr, "buf2 before suppression: \n%s", buf2);
+    fprintf(stderr, "buf2 before suppression: \n%s", buf2);
 
     /*
     int size_to_erase = strlen("HTTP/1.1");
@@ -323,19 +323,19 @@ void *webTalk(void* args)
 
     int size_to_erase = strlen("keep-alive");
     char closeReplace[size_to_erase];
-    strcpy(closeReplace, "close\n");
+    strcpy(closeReplace, "close     \0");
 
 
     while ( strstr(buf2, "keep-alive") != NULL ){
-      strcpy( (strstr(buf2, "keep-alive")), closeReplace );
+      strncpy( (strstr(buf2, "keep-alive")), closeReplace, strlen(closeReplace) );
     }
     
-    //fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
+    fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
 
 
     //write to serverfd to send data to server
     int n;
-    n = Rio_writen(serverfd, buf2, sizeof(buf2));
+    n = Rio_writen(serverfd, buf2, MAXLINE);
     if (n < 0){
       fprintf(stderr, "error sending get request to server\n");
     }
