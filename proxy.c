@@ -412,9 +412,9 @@ void *forwarder(void* args)
 //  size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
 
 
-  //while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) != 0 ) {
-    while( 1 ) {
-      if ( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) > 0 ) {
+  while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
+    //while( 1 ) {
+      if ( numBytes > 0 ) {
         Rio_writen(clientfd, buf1, MAXLINE);
       }
       else if (numBytes == 0){
