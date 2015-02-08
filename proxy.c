@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
   
   if(debug) Close(debugfd);
   Close(logfd);
+  Close(connfd);
   pthread_mutex_destroy(&mutex);
   
   return 0;
@@ -202,6 +203,12 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 void *webTalk(void* args)
 {
   int numBytes, lineNum, serverfd, clientfd, serverPort;
+
+  clientfd = ((int*)args)[0];
+  serverPort = ((int*)args)[1];
+
+  Pthread_detach(pthread_self());
+
   int tries;
   int byteCount = 0;
   char buf1[MAXLINE], buf2[MAXLINE], buf3[MAXLINE];
@@ -212,8 +219,6 @@ void *webTalk(void* args)
   char slash[10];
   strcpy(slash, "/");
 
-  clientfd = ((int*)args)[0];
-  serverPort = ((int*)args)[1];
   int * serverPort_ptr = &serverPort;
   char * file_ptr = &file;
   char * uri;
@@ -296,13 +301,13 @@ void *webTalk(void* args)
 
     while (break_me == 0){
       Rio_readlineb(&client, buf3, MAXLINE);
+      strcat(buf2, buf3);
       if (buf3[0] == '\r' && buf3[1] == '\n'){
         ++break_me;
-      }
-      strcat(buf2, buf3); 
+      } 
     }
 
-    fprintf(stderr, "buf2 before suppression: \n%s", buf2);
+    //fprintf(stderr, "buf2 before suppression: \n%s", buf2);
 
     /*
     int size_to_erase = strlen("HTTP/1.1");
@@ -318,14 +323,14 @@ void *webTalk(void* args)
 
     int size_to_erase = strlen("keep-alive");
     char closeReplace[size_to_erase];
-    strcpy(closeReplace, "close");
+    strcpy(closeReplace, "close\n");
 
 
     while ( strstr(buf2, "keep-alive") != NULL ){
       strcpy( (strstr(buf2, "keep-alive")), closeReplace );
     }
     
-    fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
+    //fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
 
 
     //write to serverfd to send data to server
@@ -343,20 +348,13 @@ void *webTalk(void* args)
 
     // GET: now receive the response
     // void *forwarder(void* args)
-
-    n = Rio_readn(serverfd, buf3, sizeof(buf3));
-    if (n < 0){
-      fprintf(stderr, "error receiving server's response to get request\n");
-    }
-    //fprintf(stderr, "\nbuf3 after calling Rio_readn: \n%s\n", buf3);
-    n = Rio_writen(clientfd, buf3, sizeof(buf3));
-    if (n < 0 ){
-      fprintf(stderr, "error writing to clientfd in http get logic \n");
-    }
-    fprintf(stderr, "\nwrote to clientfd");
-
-
+    int args2[] = {clientfd, serverfd};
+    //pthread_t tid2;
+    //Pthread_create(&tid2, NULL, forwarder, args2);
+    forwarder(args2);
+ 
   }
+
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
 
@@ -403,11 +401,46 @@ void *forwarder(void* args)
   int byteCount = 0;
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0];
+  //fprintf(stderr, "does forwarder spawn?\n");
   serverfd = ((int*)args)[1];
-  free(args);
+  rio_t server;
+  //Pthread_detach(pthread_self());
+  //free(args);
 
-  while(1) {
+  //Rio_readinitb(&client, clientfd);
+  Rio_readinitb(&server, serverfd);
+//  size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
+
+
+  //while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) != 0 ) {
+    while( 1 ) {
+      if ( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) > 0 ) {
+        Rio_writen(clientfd, buf1, MAXLINE);
+      }
+      else if (numBytes == 0){
+        //Close(clientfd);
+        //Close(serverfd);
+        return 0;
+      }
+      else if (numBytes < 0){
+        fprintf(stderr, "\nerror in forwarder,  numBytes < 0. numBytes is: %d\n", numBytes);
+      }
+      //Rio_writen(clientfd, buf1, MAXLINE);
+/*
+    numBytes = Rio_readn(serverfd, buf1, sizeof(buf1));
+    byteCount += numBytes;
+    if (numBytes < 0){
+      fprintf(stderr, "error receiving server's response to get request\n");
+    }
+    //fprintf(stderr, "\nbuf3 after calling Rio_readn: \n%s\n", buf3);
     
+    numBytes = Rio_writen(clientfd, buf1, sizeof(buf1));
+    if (numBytes < 0 ){
+      fprintf(stderr, "error writing to clientfd in http get logic \n");
+    }
+
+    fprintf(stderr, "\ncurrent byteCount: %d", byteCount);
+*/
     /* serverfd is for talking to the web server */
     /* clientfd is for talking to the browser */
     
