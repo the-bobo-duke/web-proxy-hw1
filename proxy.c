@@ -123,9 +123,10 @@ int main(int argc, char *argv[])
     
     /* create a new thread (or two) to process the new connection */
     
+    if (connfd > 0){
     int newargv[] = {connfd, serverPort};
     Pthread_create(&tid, NULL, webTalk, newargv);
-
+    }
     /*
     if(Pthread_create(&tid, NULL, threadStart, connfd)){
       fprintf(stderr, "\nError making thread\n");
@@ -259,6 +260,8 @@ void *webTalk(void* args)
 
 // GET: open connection to webserver (try several times, if necessary)
 
+    serverfd = Open_clientfd(host, serverPort);
+    /*
     serverfd = Socket(AF_INET, SOCK_STREAM, 0);
     if (serverfd < 0){
       fprintf(stderr, "Error opening socket for serverfd");
@@ -271,12 +274,12 @@ void *webTalk(void* args)
     memcpy(&server_sa_in.sin_addr, server_he->h_addr_list[0], server_he->h_length);
     server_sa_in.sin_family = AF_INET;
     server_sa_in.sin_port = htons(serverPort);
-
+    */
     /*
     fprintf(stderr, "\nvalue of Connect call is: %d\n", 
       (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0));
     */
-    
+    /*
     if (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0){
       fprintf(stderr, "\nConnecting to server over TCP failed - in HTTP GET logic\n");
       return EXIT_FAILURE;
@@ -284,7 +287,7 @@ void *webTalk(void* args)
     else {
       fprintf(stderr, "\n TCP success (GET logic line: %d)\n", __LINE__);
     }
-
+    */
     /* GET: Transfer first header to webserver */
     // initialize some string to hold the header
     // write the first two lines (GET and Host: ) manually
@@ -350,8 +353,9 @@ void *webTalk(void* args)
     // GET: now receive the response
     // void *forwarder(void* args)
     int args2[] = {clientfd, serverfd};
+    fprintf(stderr, "serverfd in webtalk: %d\n", serverfd);
     //pthread_t tid2;
-    //Pthread_create(&tid2, NULL, forwarder, args2);
+    //Pthread_create(&tid2, NULL, &forwarder, args2);
     forwarder(args2);
  
   }
@@ -366,10 +370,35 @@ void *webTalk(void* args)
     strtok_r(uri, ":", &saveptr);
     fprintf(stderr, "\nuri is: %s\n", uri);
     }
-
+    if (uri != NULL){
     parseAddress(uri, host, file_ptr, serverPort_ptr);
+    }
 
-    secureTalk(clientfd, client, host, version, serverPort);
+    fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
+    serverPort = 443;
+    fprintf(stderr, "we change serverPort to: %d\n", serverPort);
+    fprintf(stderr, "Host is: %s\n", host);
+
+    if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
+      fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+        /* let the client know we've connected to the server */
+
+    char SSL_msg[MAXLINE];
+    strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
+    Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
+
+    /* spawn a thread to pass bytes from origin server through to client */
+    /* now pass bytes from client to server */
+
+    int args3[] = {clientfd, serverfd};
+    forwarder_SSL(args3);
+    }
+
+    else {
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+
+    //secureTalk(clientfd, client, host, version, serverPort);
 
     // CONNECT: call a different function, securetalk, for HTTPS
 
@@ -406,29 +435,6 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   /* clientfd is browser */
   /* serverfd is server */
 
-    fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
-    serverPort = 443;
-    fprintf(stderr, "we change serverPort to: %d\n", serverPort);
-    fprintf(stderr, "Host is: %s\n", host);
-
-    if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
-      fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
-        /* let the client know we've connected to the server */
-
-    char SSL_msg[MAXLINE];
-    strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
-    Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
-
-    /* spawn a thread to pass bytes from origin server through to client */
-    /* now pass bytes from client to server */
-
-    int args3[] = {clientfd, serverfd};
-    forwarder_SSL(args3);
-    }
-
-    else {
-      fprintf(stderr, "error line: %d\n", __LINE__);
-    }
 
     /*
 
@@ -452,7 +458,7 @@ void *forwarder_SSL(void* args){
   clientfd = ((int*)args)[0]; 
   serverfd = ((int*)args)[1];
 
-  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >=0 ){
+  while ( (numBytes = Rio_readp(serverfd, buf1, MAXLINE)) >=0 ){
     if ( numBytes > 0 ){
       Rio_writen(clientfd, buf1, MAXLINE);
     }
@@ -472,24 +478,28 @@ void *forwarder(void* args)
   int byteCount = 0;
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0];
-  //fprintf(stderr, "does forwarder spawn?\n");
   serverfd = ((int*)args)[1];
-  rio_t server;
+  fprintf(stderr, "serverfd in forwarder: %d\n", serverfd);
+  memset(buf1, 0, sizeof(buf1)); // zero out buf1
+  //rio_t server;
   //Pthread_detach(pthread_self());
   //free(args);
 
   //Rio_readinitb(&client, clientfd);
-  Rio_readinitb(&server, serverfd);
+  //Rio_readinitb(&server, serverfd);
 
-  while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
+  //while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
+  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
+  //while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
     //while( 1 ) {
-      if ( numBytes > 0 ) {
+      if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
+        memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
       else if (numBytes == 0){
         //Close(clientfd);
         //Close(serverfd);
-        shutdown(clientfd, 1);
+        //shutdown(clientfd, 1);
         //return 0; - no, this is a bad change, makes pages load very slowly / not finish
       }
       else if (numBytes < 0){
@@ -501,6 +511,10 @@ void *forwarder(void* args)
     /* clientfd is for talking to the browser */
     
   }
+  Close(clientfd);
+  Close(serverfd);
+  return 0;
+
 }
 
 
