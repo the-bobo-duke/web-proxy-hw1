@@ -420,10 +420,12 @@ void *forwarder(void* args)
       else if (numBytes == 0){
         //Close(clientfd);
         //Close(serverfd);
-        return 0;
+        shutdown(clientfd, 1);
+        //return 0;
       }
       else if (numBytes < 0){
         fprintf(stderr, "\nerror in forwarder,  numBytes < 0. numBytes is: %d\n", numBytes);
+        shutdown(serverfd, 1);
       }
       //Rio_writen(clientfd, buf1, MAXLINE);
 /*
