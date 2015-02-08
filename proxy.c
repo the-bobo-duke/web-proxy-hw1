@@ -272,6 +272,7 @@ void *webTalk(void* args)
     */
     
     if (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0){
+      fprintf(stderr, "\nConnecting to server over TCP failed - in HTTP GET logic\n");
       return EXIT_FAILURE;
     }
     else {
@@ -300,56 +301,59 @@ void *webTalk(void* args)
       }
       strcat(buf2, buf3); 
     }
+
     fprintf(stderr, "buf2 before suppression: \n%s", buf2);
+
+    /*
+    int size_to_erase = strlen("HTTP/1.1");
+    char httpReplace[size_to_erase];
+    strcpy(httpReplace, "HTTP/1.0");    
     
+    while ( strstr(buf2, "HTTP/1.1") != NULL ){
+      strcpy( (strstr(buf2, "HTTP/1.1")), "HTTP/1.0" );
+    }
+
+    fprintf(stderr, "buf2 after http suppression: \n%s\n", buf2);
+    */
+
     int size_to_erase = strlen("keep-alive");
     char closeReplace[size_to_erase];
-    strcpy(closeReplace, " ");
     strcpy(closeReplace, "close");
+
 
     while ( strstr(buf2, "keep-alive") != NULL ){
       strcpy( (strstr(buf2, "keep-alive")), closeReplace );
     }
+    
     fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
 
-    /*
-    size_t rio_return2 = Rio_readlineb(&client, buf3, MAXLINE);
-    strcat(buf2, buf3);
-    fprintf(stderr, "buf 3 before while: %s\n", buf3);
-    fprintf(stderr, "buf 2 before while: %s\n", buf2);
-    fprintf(stderr, "value of rio_return2 o/s while: %d\n", rio_return2);
-    while (break_me != 0){
-      rio_return2 = Rio_readlineb(&client, buf3, MAXLINE);
-    
-      fprintf(stderr, "\nbuf 3: %s\n", buf3);
-      strcat(buf2, buf3);
-      fprintf(stderr, "buf 2: %s\n", buf2);
 
-      if (buf3 == '\r\n')
-        fprintf(stderr, "inside if\n");
-        break_me = 0;
+    //write to serverfd to send data to server
+    int n;
+    n = Rio_writen(serverfd, buf2, sizeof(buf2));
+    if (n < 0){
+      fprintf(stderr, "error sending get request to server\n");
     }
-    */
-
-    /*
-    //char hdr_to_send[MAX_HEADER];
-    //char first_lines[];
-    char str1 = "GET: http://";
-    char str2 = " HTTP/1.0\nHost: ";
-    fprintf(stderr, "\nsize of str1: %lu", sizeof(str1));
-    fprintf(stderr,  " size of str2: %lu", sizeof(str2)); 
-    fprintf(stderr, " size of host string: %lu\n", sizeof(host));
-    //strcat(first_lines, str1);
-    //strcat(first_lines, host);
-    //strcat(first_lines, str2);
-    //strcat(first_lines, host);
-     
-    //fprintf(stderr, "%s", first_lines);
-    */
+    //memset(buf3, 0, sizeof(buf3)); //zero out buf3 so we can receive data on it
+    
 
     // GET: Transfer remainder of the request
 
+
+
     // GET: now receive the response
+    // void *forwarder(void* args)
+
+    n = Rio_readn(serverfd, buf3, sizeof(buf3));
+    if (n < 0){
+      fprintf(stderr, "error receiving server's response to get request\n");
+    }
+    //fprintf(stderr, "\nbuf3 after calling Rio_readn: \n%s\n", buf3);
+    n = Rio_writen(clientfd, buf3, sizeof(buf3));
+    if (n < 0 ){
+      fprintf(stderr, "error writing to clientfd in http get logic \n");
+    }
+    fprintf(stderr, "\nwrote to clientfd");
 
 
   }
