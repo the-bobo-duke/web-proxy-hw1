@@ -109,30 +109,14 @@ int main(int argc, char *argv[])
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
     
     /* you have to write the code to process this new client request */
-
-    /* ssize_t Read(int fd, void *buf, size_t count); */
-    // just to show that reading works
-    /*
-    char * buf = malloc(2048);
-    
-    if (connfd > 0){
-      Read(connfd, buf, 2048);
-      fprintf(stderr, "\nHere's what comes out: \n%s", buf);
-    }
-    */
-    
+   
     /* create a new thread (or two) to process the new connection */
     
     if (connfd > 0){
     int newargv[] = {connfd, serverPort};
     Pthread_create(&tid, NULL, webTalk, newargv);
+    //webTalk(newargv);
     }
-    /*
-    if(Pthread_create(&tid, NULL, threadStart, connfd)){
-      fprintf(stderr, "\nError making thread\n");
-      return EXIT_FAILURE;
-    }
-    */
   }
   
   if(debug) Close(debugfd);
@@ -194,14 +178,6 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 
 /* you have to write a lot of it */
 
-/*
-* Sets up thread 
-* Reads in browser requests (RIO)
-* Calls parseAddres
-* Calls webTalk
-* Closes connfd
-*/
-
 void *webTalk(void* args)
 {
   int numBytes, lineNum, serverfd, clientfd, serverPort;
@@ -233,11 +209,6 @@ void *webTalk(void* args)
   fprintf(stderr, "\nBROWSER'S INITIAL REQ: %s\n", buf1);
   
   if (buf1[0] == 'G'){
-    //fprintf(stderr, "\nWe should process a GET request\n");
-    // need to isolate the "1" in "HTTP/1.1" so we can change it to 0
-    //fprintf(stderr, "\nthis should say 1: %c\n", buf1[rio_return-3]);
-    // -3 because: \n char, terminating null char, and rio_return is # bytes read
-    // but array indecies start at 0 not 1
 
     //copy buf1 to buf2 so we can later recover full HTTP Header
     memcpy(&buf2, buf1, MAXLINE);
@@ -249,58 +220,15 @@ void *webTalk(void* args)
     strtok_r(uri, " ", &saveptr);
     fprintf(stderr, "\nuri is: %s\n", uri);
     }
+    
     // call parseAddress to get hostname back
-    //void parseAddress(char* url, char* host, char** file, int* serverPort)
     
     parseAddress(uri, host, file_ptr, serverPort_ptr);
-    /*
-    fprintf(stderr, "\n host is: %s\n", host);
-    fprintf(stderr, "\n file path is: %s\n", file);
-    fprintf(stderr, "\n serverPort should still be 80: %d\n", serverPort);
-    */
+
 
 // GET: open connection to webserver (try several times, if necessary)
 
     serverfd = Open_clientfd(host, serverPort);
-    /*
-    serverfd = Socket(AF_INET, SOCK_STREAM, 0);
-    if (serverfd < 0){
-      fprintf(stderr, "Error opening socket for serverfd");
-      return EXIT_FAILURE;
-    }
-
-    struct hostent *server_he = Gethostbyname(host);
-    struct sockaddr_in server_sa_in;
-
-    memcpy(&server_sa_in.sin_addr, server_he->h_addr_list[0], server_he->h_length);
-    server_sa_in.sin_family = AF_INET;
-    server_sa_in.sin_port = htons(serverPort);
-    */
-    /*
-    fprintf(stderr, "\nvalue of Connect call is: %d\n", 
-      (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0));
-    */
-    /*
-    if (Connect(serverfd, (struct sockaddr *)&server_sa_in, sizeof(server_sa_in)) < 0){
-      fprintf(stderr, "\nConnecting to server over TCP failed - in HTTP GET logic\n");
-      return EXIT_FAILURE;
-    }
-    else {
-      fprintf(stderr, "\n TCP success (GET logic line: %d)\n", __LINE__);
-    }
-    */
-    /* GET: Transfer first header to webserver */
-    // initialize some string to hold the header
-    // write the first two lines (GET and Host: ) manually
-    // then iterate through the currently existing HTTP header req
-    // and add those lines to the string
-    // but look for a Proxy-Connection or a Connection
-    // and change those to "Proxy-Connection: close"
-    // end of the header is \r\n
-    // set max size of 8192 bytes for our headers based on Apache default limit
-
-    // buf2 has full GET ... HTTP/1.1 line in it. How to get rest of header?
-    // then need to modify header to suppress keep-alive
     
     int break_me = 0;
 
@@ -313,18 +241,6 @@ void *webTalk(void* args)
     }
 
     fprintf(stderr, "buf2 before suppression: \n%s", buf2);
-
-    /*
-    int size_to_erase = strlen("HTTP/1.1");
-    char httpReplace[size_to_erase];
-    strcpy(httpReplace, "HTTP/1.0");    
-    
-    while ( strstr(buf2, "HTTP/1.1") != NULL ){
-      strcpy( (strstr(buf2, "HTTP/1.1")), "HTTP/1.0" );
-    }
-
-    fprintf(stderr, "buf2 after http suppression: \n%s\n", buf2);
-    */
 
     int size_to_erase = strlen("keep-alive");
     char closeReplace[size_to_erase];
@@ -349,15 +265,12 @@ void *webTalk(void* args)
 
     // GET: Transfer remainder of the request
 
-
-
     // GET: now receive the response
-    // void *forwarder(void* args)
+    
     int *args2 = malloc(2 * sizeof(args2));
     args2[0] = clientfd;
     args2[1] = serverfd;
     //int args2[] = {clientfd, serverfd};
-    fprintf(stderr, "serverfd in webtalk: %d\n", serverfd);
     pthread_t tid2;
     Pthread_create(&tid2, NULL, &forwarder, args2);
     //forwarder(args2);
@@ -399,6 +312,7 @@ void *webTalk(void* args)
     pthread_t tid3;
     Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
     //forwarder_SSL(args3);
+
     }
 
     else {
@@ -427,12 +341,8 @@ void *webTalk(void* args)
     // CONNECT: call a different function, securetalk, for HTTPS
 
   }
-/*
-  else {    // you get an empty request from the browser...
-    shutdown(clientfd, 1);
-    return 0;
-  }*/
-return 0;
+
+pthread_exit(NULL);
 }
 
 
@@ -457,18 +367,6 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   /* Open connecton to webserver */
   /* clientfd is browser */
   /* serverfd is server */
-
-
-    /*
-
-    //write to serverfd to send data to server
-    int n;
-    n = Rio_writen(serverfd, buf2, MAXLINE);
-    if (n < 0){
-      fprintf(stderr, "error sending get request to server\n");
-    }
-
-    */
 
 }
 
@@ -497,7 +395,7 @@ void *forwarder_SSL(void* args){
 
   shutdown(clientfd, 1);
   //shutdown(serverfd, 1);
-  return 0;
+  pthread_exit(NULL);
 
 }
 
@@ -508,7 +406,6 @@ void *forwarder(void* args)
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0];
   serverfd = ((int*)args)[1];
-  fprintf(stderr, "serverfd in forwarder: %d\n", serverfd);
   memset(buf1, 0, MAXLINE); // zero out buf1
 
   Pthread_detach(pthread_self());
@@ -525,16 +422,6 @@ void *forwarder(void* args)
     //while( 1 ) {
       if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
-        /*
-        FILE *f = fopen("file.txt", "w");
-        if (f == NULL)
-        {
-          printf("Error opening file!\n");
-          exit(1);
-        }
-
-        fprintf(f, "Some text: %s\n", buf1);
-        fclose(f);*/
         //memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
       else if (numBytes == 0){
@@ -554,7 +441,7 @@ void *forwarder(void* args)
   }
   shutdown(clientfd,1);
   //shutdown(serverfd,1);
-  return 0;
+  pthread_exit(NULL);
 
 }
 
