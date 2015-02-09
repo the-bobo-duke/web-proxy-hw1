@@ -344,7 +344,7 @@ void *webTalk(void* args)
     if (n < 0){
       fprintf(stderr, "error sending get request to server\n");
     }
-    //memset(buf3, 0, sizeof(buf3)); //zero out buf3 so we can receive data on it
+    memset(buf3, 0, MAXLINE); //zero out buf3 so we can receive data on it
     
 
     // GET: Transfer remainder of the request
@@ -358,9 +358,9 @@ void *webTalk(void* args)
     args2[1] = serverfd;
     //int args2[] = {clientfd, serverfd};
     fprintf(stderr, "serverfd in webtalk: %d\n", serverfd);
-    //pthread_t tid2;
-    //Pthread_create(&tid2, NULL, &forwarder, args2);
-    forwarder(args2);
+    pthread_t tid2;
+    Pthread_create(&tid2, NULL, &forwarder, args2);
+    //forwarder(args2);
  
   }
 
@@ -380,12 +380,11 @@ void *webTalk(void* args)
     }
 
     fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
-    //serverPort = 443;
-    //fprintf(stderr, "we change serverPort to: %d\n", serverPort);
     fprintf(stderr, "Host is: %s\n", host);
 
     if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
       fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+   
         /* let the client know we've connected to the server */
 
     char SSL_msg[MAXLINE];
@@ -393,8 +392,7 @@ void *webTalk(void* args)
     Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
 
     /* spawn a thread to pass bytes from origin server through to client */
-    
-    //int args3[] = {clientfd, serverfd};
+ 
     int * args3 = malloc(2 * sizeof(args3));
     args3[0] = clientfd;
     args3[1] = serverfd;
@@ -414,10 +412,13 @@ void *webTalk(void* args)
         Rio_writen(serverfd, buf1, MAXLINE);
       }
       else if (numBytes == 0){
+        //fprintf(stderr, "Client has no more bytes to send to Server (SSL). Line: %d\n", __LINE__);
+        //Close(serverfd);
         shutdown(serverfd, 1);
       }
       else if (numBytes < 0){
-        fprintf(stderr, "error in passing bytes from B to S: LINE: %d\ncall shutdown(serverfd)?", __LINE__);
+        fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\ncall shutdown(serverfd)?", __LINE__);
+
       }
     }
 
@@ -426,13 +427,12 @@ void *webTalk(void* args)
     // CONNECT: call a different function, securetalk, for HTTPS
 
   }
-
-  else if (buf1[0] == " "){
-    //EOF detected
-    //shutdown(serverfd, 1);
-    fprintf(stderr, "EOF detected on line: %d\ncall shutdown(serverfd)?", __LINE__);
-  }
-
+/*
+  else {    // you get an empty request from the browser...
+    shutdown(clientfd, 1);
+    return 0;
+  }*/
+return 0;
 }
 
 
@@ -495,8 +495,9 @@ void *forwarder_SSL(void* args){
     }
   }
 
-  Close(clientfd);
-  Close(serverfd);
+  shutdown(clientfd, 1);
+  //shutdown(serverfd, 1);
+  return 0;
 
 }
 
@@ -508,9 +509,9 @@ void *forwarder(void* args)
   clientfd = ((int*)args)[0];
   serverfd = ((int*)args)[1];
   fprintf(stderr, "serverfd in forwarder: %d\n", serverfd);
-  memset(buf1, 0, sizeof(buf1)); // zero out buf1
+  memset(buf1, 0, MAXLINE); // zero out buf1
 
-  //Pthread_detach(pthread_self());
+  Pthread_detach(pthread_self());
 
   //rio_t server;
   //free(args);
@@ -534,7 +535,7 @@ void *forwarder(void* args)
 
         fprintf(f, "Some text: %s\n", buf1);
         fclose(f);*/
-        memset(buf1, 0, sizeof(buf1)); // zero out buf1
+        //memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
       else if (numBytes == 0){
         //Close(clientfd);
@@ -543,7 +544,7 @@ void *forwarder(void* args)
         //return 0; - no, this is a bad change, makes pages load very slowly / not finish
       }
       else if (numBytes < 0){
-        fprintf(stderr, "\nerror in forwarder, call shutdown(serverfd)? numBytes is: %d\n", numBytes);
+        fprintf(stderr, "\nerror in forwarder, call shutdown(serverfd)? line is: %d\n", __LINE__);
         //shutdown(serverfd, 1);
       }
 
@@ -551,8 +552,8 @@ void *forwarder(void* args)
     /* clientfd is for talking to the browser */
     
   }
-  Close(clientfd);
-  Close(serverfd);
+  shutdown(clientfd,1);
+  //shutdown(serverfd,1);
   return 0;
 
 }
@@ -560,7 +561,7 @@ void *forwarder(void* args)
 
 void ignore()
 {
-	;
+	signal(SIGPIPE, SIG_IGN);
 }
 
 
