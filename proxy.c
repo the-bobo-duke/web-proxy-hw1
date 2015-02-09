@@ -273,7 +273,24 @@ void *webTalk(void* args)
     // GET: Transfer remainder of the request
 
     // GET: now receive the response
-    
+    /*
+    int err = 0;
+    int thing = 0;
+    while (err < 10){
+      thing = Rio_readn(serverfd, buf1, MAXLINE);
+      if (thing < 0){
+        ++err;
+        fprintf(stderr, "err: %d\n", err);
+        if ((serverfd = Open_clientfd(host, serverPort)) < 0){
+          fprintf(stderr, "error line: %d\n", __LINE__);
+          }
+        n = Rio_writen(serverfd, buf2, MAXLINE);
+        if (n < 0){
+          fprintf(stderr, "error sending get request to server line: %d\n", __LINE__);
+        }
+      }
+  }*/
+
     int *args2 = malloc(2 * sizeof(args2));
     args2[0] = clientfd;
     args2[1] = serverfd;
