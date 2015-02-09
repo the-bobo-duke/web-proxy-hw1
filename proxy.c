@@ -260,8 +260,7 @@ void *webTalk(void* args)
     if (n < 0){
       fprintf(stderr, "error sending get request to server\n");
     }
-    memset(buf3, 0, MAXLINE); //zero out buf3 so we can receive data on it
-    
+    //memset(buf3, 0, MAXLINE); //zero out buf3 so we can receive data on it
 
     // GET: Transfer remainder of the request
 
@@ -385,13 +384,15 @@ void *forwarder_SSL(void* args){
     if ( numBytes > 0 ){
       Rio_writen(clientfd, buf1, MAXLINE);
     }
+  }
+    /*
     else if (numBytes == 0){
       //shutdown(clientfd, 1);
     }
     else if (numBytes < 0){
       fprintf(stderr, "error in forwarder_SSL, LINE: %d\ncall shutdown(serverfd)?", __LINE__);
     }
-  }
+  */
 
   shutdown(clientfd, 1);
   //shutdown(serverfd, 1);
@@ -406,7 +407,7 @@ void *forwarder(void* args)
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0];
   serverfd = ((int*)args)[1];
-  memset(buf1, 0, MAXLINE); // zero out buf1
+  //memset(buf1, 0, MAXLINE); // zero out buf1
 
   Pthread_detach(pthread_self());
 
@@ -424,6 +425,8 @@ void *forwarder(void* args)
         Rio_writen(clientfd, buf1, MAXLINE);
         //memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
+    }
+      /*
       else if (numBytes == 0){
         //Close(clientfd);
         //Close(serverfd);
@@ -433,12 +436,11 @@ void *forwarder(void* args)
       else if (numBytes < 0){
         fprintf(stderr, "\nerror in forwarder, call shutdown(serverfd)? line is: %d\n", __LINE__);
         //shutdown(serverfd, 1);
-      }
+      }*/
 
     /* serverfd is for talking to the web server */
     /* clientfd is for talking to the browser */
     
-  }
   shutdown(clientfd,1);
   //shutdown(serverfd,1);
   pthread_exit(NULL);
