@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
   sigset_t sig_pipe; 
   pthread_t tid;
   int *args;
+  int clientfd2;
   
   if (argc < 2) {
     printf("Usage: %s port [debug] [webServerPort]\n", argv[0]);
@@ -101,19 +102,25 @@ int main(int argc, char *argv[])
      to the files */
   
   pthread_mutex_init(&mutex, NULL);
+
   while(1) {
     clientlen = sizeof(clientaddr);
 
     /* accept a new connection from a client here */
 
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+    //clientfd2 = connfd;
     
     /* you have to write the code to process this new client request */
    
     /* create a new thread (or two) to process the new connection */
     
-    if (connfd > 0){
-    int newargv[] = {connfd, serverPort};
+    //int newargv[] = {connfd, serverPort, clientfd2};
+    if (connfd >= 0){
+    //int newargv[] = {connfd, serverPort};
+    int *newargv = malloc(2 * sizeof(newargv));
+    newargv[0] = connfd;
+    newargv[1] = serverPort;
     Pthread_create(&tid, NULL, webTalk, newargv);
     //webTalk(newargv);
     }
@@ -180,10 +187,11 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 
 void *webTalk(void* args)
 {
-  int numBytes, lineNum, serverfd, clientfd, serverPort;
+  int numBytes, lineNum, serverfd, clientfd, serverPort, clientfd2;
 
   clientfd = ((int*)args)[0];
   serverPort = ((int*)args)[1];
+  //clientfd2 = ((int*)args)[2];
 
   Pthread_detach(pthread_self());
 
@@ -203,7 +211,7 @@ void *webTalk(void* args)
   //free(args);
   
   Rio_readinitb(&client, clientfd);
-  size_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
+  ssize_t rio_return = Rio_readlineb(&client, buf1, MAXLINE);
 
   // Determine protocol (CONNECT or GET)
   fprintf(stderr, "\nBROWSER'S INITIAL REQ: %s\n", buf1);
@@ -269,13 +277,14 @@ void *webTalk(void* args)
     int *args2 = malloc(2 * sizeof(args2));
     args2[0] = clientfd;
     args2[1] = serverfd;
+    //args2[2] = clientfd2;
     //int args2[] = {clientfd, serverfd};
     pthread_t tid2;
     Pthread_create(&tid2, NULL, &forwarder, args2);
     //forwarder(args2);
  
   }
-
+/*
   else if (buf1[0] == 'C'){
     fprintf(stderr, "\nWe should process a CONNECT request\n");
 
@@ -297,17 +306,18 @@ void *webTalk(void* args)
     if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
       fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
    
-        /* let the client know we've connected to the server */
+        // let the client know we've connected to the server 
 
     char SSL_msg[MAXLINE];
     strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
-    Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
+    Rio_writen(clientfd2, SSL_msg, strlen(SSL_msg));
 
-    /* spawn a thread to pass bytes from origin server through to client */
+    // spawn a thread to pass bytes from origin server through to client 
  
     int * args3 = malloc(2 * sizeof(args3));
     args3[0] = clientfd;
     args3[1] = serverfd;
+    //args3[2] = clientfd2;
     pthread_t tid3;
     Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
     //forwarder_SSL(args3);
@@ -318,9 +328,9 @@ void *webTalk(void* args)
       fprintf(stderr, "error Open_clientfd for SSL: line: %d\n", __LINE__);
     }
 
-    /* now pass bytes from client to server */
+    // now pass bytes from client to server 
 
-    while ( (numBytes = Rio_readn(clientfd, buf1, MAXLINE)) >=0 ){
+    while ( (numBytes = Rio_readn(clientfd2, buf1, MAXLINE)) >=0 ){
       if ( numBytes > 0 ){
         Rio_writen(serverfd, buf1, MAXLINE);
       }
@@ -339,7 +349,7 @@ void *webTalk(void* args)
 
     // CONNECT: call a different function, securetalk, for HTTPS
 
-  }
+  }*/
 
 pthread_exit(NULL);
 }
@@ -373,14 +383,20 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
 
 void *forwarder_SSL(void* args){
   int numBytes, lineNum, serverfd, clientfd;
+  //int clientfd2;
   int byteCount = 0;
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0]; 
   serverfd = ((int*)args)[1];
+  //clientfd2 = ((int*)args)[2];
 
   Pthread_detach(pthread_self());
+  /*
+  while ( (Rio_readp(serverfd, buf1, MAXLINE)) >= 0 ){
+    Rio_writep(clientfd, buf1, MAXLINE);
+  }*/
 
-  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >=0 ){
+  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0){
     if ( numBytes > 0 ){
       Rio_writen(clientfd, buf1, MAXLINE);
     }
@@ -394,8 +410,8 @@ void *forwarder_SSL(void* args){
     }
   */
 
-  shutdown(clientfd, 1);
-  //shutdown(serverfd, 1);
+  Close(clientfd);
+  Close(serverfd);
   pthread_exit(NULL);
 
 }
@@ -403,15 +419,17 @@ void *forwarder_SSL(void* args){
 void *forwarder(void* args)
 {
   int numBytes, lineNum, serverfd, clientfd;
+  //int clientfd2;
   int byteCount = 0;
   char buf1[MAXLINE];
   clientfd = ((int*)args)[0];
   serverfd = ((int*)args)[1];
+  //clientfd2 = ((int*)args)[2];
   //memset(buf1, 0, MAXLINE); // zero out buf1
 
   Pthread_detach(pthread_self());
 
-  //rio_t server;
+  //rio_t server, client;
   //free(args);
 
   //Rio_readinitb(&client, clientfd);
@@ -419,7 +437,6 @@ void *forwarder(void* args)
 
   //while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
   while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
-  //while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
     //while( 1 ) {
       if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
@@ -441,8 +458,10 @@ void *forwarder(void* args)
     /* serverfd is for talking to the web server */
     /* clientfd is for talking to the browser */
     
-  shutdown(clientfd,1);
+  //shutdown(clientfd,1);
   //shutdown(serverfd,1);
+  Close(clientfd);
+  Close(serverfd);
   pthread_exit(NULL);
 
 }
