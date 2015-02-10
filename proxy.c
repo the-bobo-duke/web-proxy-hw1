@@ -22,33 +22,33 @@
  * function declarations
  *============================================================*/
 
-int  find_target_address(char * uri,
-			 char * target_address,
-			 char * path,
-			 int  * port);
+ int  find_target_address(char * uri,
+  char * target_address,
+  char * path,
+  int  * port);
 
 
-void  format_log_entry(char * logstring,
-		       int sock,
-		       char * uri,
-		       int size);
-		       
-void *forwarder(void* args);
-void *forwarder_SSL(void* args);
-void *webTalk(void* args);
-void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int serverPort);
-void ignore();
+ void  format_log_entry(char * logstring,
+   int sock,
+   char * uri,
+   int size);
 
-int debug;
-int proxyPort;
-int debugfd;
-int logfd;
-pthread_mutex_t mutex;
+ void *forwarder(void* args);
+ void *forwarder_SSL(void* args);
+ void *webTalk(void* args);
+ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int serverPort);
+ void ignore();
+
+ int debug;
+ int proxyPort;
+ int debugfd;
+ int logfd;
+ pthread_mutex_t mutex;
 
 /* main function for the proxy program */
 
-int main(int argc, char *argv[])
-{
+ int main(int argc, char *argv[])
+ {
   int count = 0;
   int listenfd, connfd, clientlen, optval, serverPort, i;
   struct sockaddr_in clientaddr;
@@ -88,50 +88,50 @@ int main(int argc, char *argv[])
 * START LISTENING ON PROXY PORT
 * =================================================================
 */
-  listenfd = Open_listenfd(proxyPort);
+listenfd = Open_listenfd(proxyPort);
 
-  optval = 1;
-  setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int)); 
-  
-  if(debug) debugfd = Open(DEBUG_FILE, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+optval = 1;
+setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int)); 
 
-  logfd = Open(LOG_FILE, O_CREAT | O_TRUNC | O_WRONLY, 0666);    
+if(debug) debugfd = Open(DEBUG_FILE, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
+logfd = Open(LOG_FILE, O_CREAT | O_TRUNC | O_WRONLY, 0666);    
 
 
   /* if writing to log files, force each thread to grab a lock before writing
      to the files */
-  
-  pthread_mutex_init(&mutex, NULL);
 
-  while(1) {
-    clientlen = sizeof(clientaddr);
+pthread_mutex_init(&mutex, NULL);
+
+while(1) {
+  clientlen = sizeof(clientaddr);
 
     /* accept a new connection from a client here */
 
-    connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+  connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
     //clientfd2 = connfd;
-    
+
     /* you have to write the code to process this new client request */
-   
+
     /* create a new thread (or two) to process the new connection */
-    
+
     //int newargv[] = {connfd, serverPort, clientfd2};
-    if (connfd >= 0){
+  if (connfd >= 0){
     //int newargv[] = {connfd, serverPort};
     int *newargv = malloc(2 * sizeof(newargv));
     newargv[0] = connfd;
     newargv[1] = serverPort;
     Pthread_create(&tid, NULL, webTalk, newargv);
     //webTalk(newargv);
-    }
   }
-  
-  if(debug) Close(debugfd);
-  Close(logfd);
-  Close(connfd);
-  pthread_mutex_destroy(&mutex);
-  
-  return 0;
+}
+
+if(debug) Close(debugfd);
+Close(logfd);
+Close(connfd);
+pthread_mutex_destroy(&mutex);
+
+return 0;
 }
 
 /* a possibly handy function that we provide, fully written */
@@ -144,35 +144,35 @@ int main(int argc, char *argv[])
 void parseAddress(char* url, char* host, char** file, int* serverPort)
 {
 	char *point1;
-        char *point2;
-        char *saveptr;
+  char *point2;
+  char *saveptr;
 
-	if(strstr(url, "http://"))
-		url = &(url[7]);
-	*file = strchr(url, '/');
-	
-	strcpy(host, url);
+  if(strstr(url, "http://"))
+    url = &(url[7]);
+  *file = strchr(url, '/');
+
+  strcpy(host, url);
 
 	/* first time strtok_r is called, returns pointer to host */
 	/* strtok_r (and strtok) destroy the string that is tokenized */
 
 	/* get rid of everything after the first / */
 
-	strtok_r(host, "/", &saveptr);
+  strtok_r(host, "/", &saveptr);
 
 	/* now look to see if we have a colon */
 
-	point1 = strchr(host, ':');
-	if(!point1) {
-		*serverPort = 80;
-		return;
-	}
-	
+  point1 = strchr(host, ':');
+  if(!point1) {
+    *serverPort = 80;
+    return;
+  }
+
 	/* we do have a colon, so get the host part out */
-	strtok_r(host, ":", &saveptr);
+  strtok_r(host, ":", &saveptr);
 
 	/* now get the part after the : */
-	*serverPort = atoi(strtok_r(NULL, "/",&saveptr));
+  *serverPort = atoi(strtok_r(NULL, "/",&saveptr));
 }
 
 /* ================================================================
@@ -223,10 +223,10 @@ void *webTalk(void* args)
 
     // extract uri for use in parseAddress
     if (rio_return > 0){
-    uri = strchr(buf1, ' ');
-    uri++;
-    strtok_r(uri, " ", &saveptr);
-    fprintf(stderr, "\nuri is: %s\n", uri);
+      uri = strchr(buf1, ' ');
+      uri++;
+      strtok_r(uri, " ", &saveptr);
+      fprintf(stderr, "\nuri is: %s\n", uri);
     }
     
     // call parseAddress to get hostname back
@@ -290,38 +290,83 @@ void *webTalk(void* args)
       }
   }*/
 
-    int *args2 = malloc(2 * sizeof(args2));
-    args2[0] = clientfd;
-    args2[1] = serverfd;
+      int *args2 = malloc(2 * sizeof(args2));
+      args2[0] = clientfd;
+      args2[1] = serverfd;
     //args2[2] = clientfd2;
     //int args2[] = {clientfd, serverfd};
-    pthread_t tid2;
-    Pthread_create(&tid2, NULL, &forwarder, args2);
+      pthread_t tid2;
+      Pthread_create(&tid2, NULL, &forwarder, args2);
     //forwarder(args2);
- 
-  }
 
-  else if (buf1[0] == 'C'){
-    fprintf(stderr, "\nWe should process a CONNECT request\n");
-
-    memcpy(&buf2, buf1, MAXLINE);
-    
-    if (rio_return > 0){
-    uri = strchr(buf1, ' ');
-    uri++;    
-    strtok_r(uri, " ", &saveptr);
-    fprintf(stderr, "\nuri is: %s\n", uri);
-    }
-    
-    if (uri != NULL){
-    parseAddress(uri, host, file_ptr, serverPort_ptr);
     }
 
-    fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
-    fprintf(stderr, "Host is: %s\n", host);
+    else if (buf1[0] == 'C'){
+      fprintf(stderr, "\nWe should process a CONNECT request\n");
 
-    if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
-      fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+      memcpy(&buf2, buf1, MAXLINE);
+
+      if (rio_return > 0){
+        uri = strchr(buf1, ' ');
+        uri++;    
+        strtok_r(uri, " ", &saveptr);
+        fprintf(stderr, "\nuri is: %s\n", uri);
+      }
+
+      if (uri != NULL){
+        parseAddress(uri, host, file_ptr, serverPort_ptr);
+      }
+
+      fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
+      fprintf(stderr, "Host is: %s\n", host);
+
+      if ( (serverfd = Open_clientfd(host, serverPort)) > 0 ) {
+        fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+      }
+
+      int n;
+      n = Rio_writen(serverfd, buf1, MAXLINE);
+
+      strcat(buf1, "\r\n");
+
+      if (n <= 0){
+        fprintf(stderr, "error sending get request to server: line %d\n", __LINE__);
+      }
+      fprintf(stderr, "sent server buf1: \n%s", buf1);
+
+      char SSL_msg[MAXLINE];
+      strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n");
+      int checker = Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
+      if (checker > 0){
+        fprintf(stderr, "successfully wrote HTTP 200 to client. line: %d\n", __LINE__);
+      }
+      else if (checker < 0){
+        fprintf(stderr, "error writing HTTP 200 to client. line: %d\n", __LINE__);
+      }
+
+      int *args3 = malloc(2 * sizeof(args3));
+      args3[0] = clientfd;
+      args3[1] = serverfd;
+      //args3[2] = clientfd2;
+      pthread_t tid3;
+      Pthread_create(&tid3, NULL, &forwarder, args3);
+
+      //pthread_mutex_lock(&mutex);
+
+      while ( (numBytes = Rio_readn(clientfd, buf1, MAXLINE)) > 0) {
+      if ( numBytes > 0 ) {       
+        Rio_writen(serverfd, buf1, MAXLINE);
+      }
+    }
+    if (numBytes < 0){
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+
+     // pthread_mutex_unlock(&mutex);
+
+    //Close(clientfd);
+    //Close(serverfd);
+
 
     // logic for sending CONNECT request headers, claimed to be unneccessary
 
@@ -356,18 +401,9 @@ void *webTalk(void* args)
     */
     // let the client know we've connected to the server 
 
-    char SSL_msg[MAXLINE];
-    strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
-    int checker = Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
-    if (checker > 0){
-      fprintf(stderr, "successfully wrote HTTP 200 to client. line: %d\n", __LINE__);
-    }
-    else if (checker < 0){
-      fprintf(stderr, "error writing HTTP 200 to client. line: %d\n", __LINE__);
-    }
-
     // spawn a thread to pass bytes from origin server through to client 
- 
+
+    /*
     int *args3 = malloc(2 * sizeof(args3));
     args3[0] = clientfd;
     args3[1] = serverfd;
@@ -375,19 +411,15 @@ void *webTalk(void* args)
     pthread_t tid3;
     Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
     //forwarder_SSL(args3);
+  */
+  
+  }
 
-    }
-
-    else {
-      fprintf(stderr, "error Open_clientfd for SSL: line: %d\n", __LINE__);
-    }
-
-    
     //secureTalk(clientfd, client, host, version, serverPort);
 
     // CONNECT: call a different function, securetalk, for HTTPS
 
-  }
+
 //Close(serverfd);
 //Close(clientfd);
 pthread_exit(NULL);
@@ -435,37 +467,44 @@ void *forwarder_SSL(void* args){
     Rio_writep(clientfd, buf1, MAXLINE);
   }*/
 
-  fprintf(stderr, "at line: %d\n", __LINE__);
+// now pass bytes from client to server 
+    int ckr;
+    int cntr2 = 0;
 
-  numBytes = Rio_readp(serverfd, buf1, MAXLINE);
-  fprintf(stderr, "numBytes: %d\n", numBytes);
-  
-  while ( numBytes > 0){
+    ckr = Rio_readp(clientfd, buf1, MAXLINE);
+    fprintf(stderr, "value of Rio_readp(clientfd) (SSL) is: %d at line: %d\n", ckr, __LINE__);
+    fprintf(stderr, "client wants to send this message: %sENDMSG\n", buf1);
+
+    while ( ckr >= 0 && cntr2 < 10 ){    
+      ++cntr2;
+      int ckr2 = Rio_writen(serverfd, buf1, MAXLINE);
+      if (ckr2 < 0){
+          //Close(serverfd);
+        break;
+      }
+      fprintf(stderr, "wrote %d many bytes to serverfd (SSL) at line: %d\n", ckr2, __LINE__);
+    }
+    
+    if (ckr < 0){
+      fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\n", __LINE__);
+    }
+
+    fprintf(stderr, "at line: %d\n", __LINE__);
+
+    fprintf(stderr, "at line: %d\n", __LINE__);
+    int cntr1 = 0;
+
+    numBytes = Rio_readp(serverfd, buf1, MAXLINE);
+    fprintf(stderr, "numBytes: %d\n", numBytes);
+
+    while ( numBytes >= 0 && cntr1 < 10 ){
       Rio_writen(clientfd, buf1, MAXLINE);
+      ++cntr1;
       //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
       numBytes = Rio_readp(serverfd, buf1, MAXLINE);
     }
 
-  fprintf(stderr, "at line: %d\n", __LINE__);
-
-  // now pass bytes from client to server 
-    int ckr;
-    ckr = Rio_readp(clientfd, buf1, MAXLINE);
-    fprintf(stderr, "value of Rio_readn(clientfd) (SSL) is: %d at line: %d\n", ckr, __LINE__);
-    
-    while ( ckr > 0 ){    
-        int ckr2 = Rio_writen(serverfd, buf1, MAXLINE);
-        if (ckr2 < 0){
-          Close(serverfd);
-        }
-        fprintf(stderr, "wrote %d many bytes to serverfd (SSL) at line: %d\n", ckr2, __LINE__);
-     }
-    
-    if (ckr < 0){
-        fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\n", __LINE__);
-      }
-
-  fprintf(stderr, "at line: %d\n", __LINE__);
+    fprintf(stderr, "at line: %d\n", __LINE__);
     
     /*
     else if (numBytes == 0){
@@ -476,32 +515,39 @@ void *forwarder_SSL(void* args){
     }
   */
 
-  Close(clientfd);
-  Close(serverfd);
-  pthread_exit(NULL);
+    if (clientfd){
+      Close(clientfd);
+    }
+    if (serverfd) {
+      Close(serverfd);
+    }
+    pthread_exit(NULL);
 
-}
+  }
 
-void *forwarder(void* args)
-{
-  int numBytes, lineNum, serverfd, clientfd;
+  void *forwarder(void* args)
+  {
+    int numBytes, lineNum, serverfd, clientfd;
   //int clientfd2;
-  int byteCount = 0;
-  char buf1[MAXLINE];
-  clientfd = ((int*)args)[0];
-  serverfd = ((int*)args)[1];
+    int byteCount = 0;
+    char buf1[MAXLINE];
+    clientfd = ((int*)args)[0];
+    serverfd = ((int*)args)[1];
   //clientfd2 = ((int*)args)[2];
   //memset(buf1, 0, MAXLINE); // zero out buf1
 
-  Pthread_detach(pthread_self());
-
-  while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
-    //while( 1 ) {
+    Pthread_detach(pthread_self());
+    //pthread_mutex_lock(&mutex);
+    while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
       if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
-        //memset(buf1, 0, sizeof(buf1)); // zero out buf1
       }
     }
+    if (numBytes < 0){
+      fprintf(stderr, "error line: %d\n", __LINE__);
+      //Close(serverfd);
+    }
+    //pthread_mutex_unlock(&mutex);
       /*
       else if (numBytes == 0){
         //Close(clientfd);
@@ -516,20 +562,20 @@ void *forwarder(void* args)
 
     /* serverfd is for talking to the web server */
     /* clientfd is for talking to the browser */
-    
+
   //shutdown(clientfd,1);
   //shutdown(serverfd,1);
-  Close(clientfd);
-  Close(serverfd);
-  pthread_exit(NULL);
+        Close(clientfd);
+        Close(serverfd);
+        pthread_exit(NULL);
 
-}
+      }
 
 
-void ignore()
-{
-	signal(SIGPIPE, SIG_IGN);
-}
+      void ignore()
+      {
+       signal(SIGPIPE, SIG_IGN);
+     }
 
 
 /*============================================================
@@ -547,48 +593,48 @@ void ignore()
  *============================================================*/
 
 /*find_target_address - find the host name from the uri */
-int  find_target_address(char * uri, char * target_address, char * path,
-                         int  * port)
+ int  find_target_address(char * uri, char * target_address, char * path,
+   int  * port)
 
-{
+ {
   //  printf("uri: %s\n",uri);
-  
 
-    if (strncasecmp(uri, "http://", 7) == 0) {
-	char * hostbegin, * hostend, *pathbegin;
-	int    len;
-       
+
+  if (strncasecmp(uri, "http://", 7) == 0) {
+   char * hostbegin, * hostend, *pathbegin;
+   int    len;
+
 	/* find the target address */
-	hostbegin = uri+7;
-	hostend = strpbrk(hostbegin, " :/\r\n");
-	if (hostend == NULL){
-	  hostend = hostbegin + strlen(hostbegin);
-	}
-	
-	len = hostend - hostbegin;
+   hostbegin = uri+7;
+   hostend = strpbrk(hostbegin, " :/\r\n");
+   if (hostend == NULL){
+     hostend = hostbegin + strlen(hostbegin);
+   }
 
-	strncpy(target_address, hostbegin, len);
-	target_address[len] = '\0';
+   len = hostend - hostbegin;
+
+   strncpy(target_address, hostbegin, len);
+   target_address[len] = '\0';
 
 	/* find the port number */
-	if (*hostend == ':')   *port = atoi(hostend+1);
+   if (*hostend == ':')   *port = atoi(hostend+1);
 
 	/* find the path */
 
-	pathbegin = strchr(hostbegin, '/');
+   pathbegin = strchr(hostbegin, '/');
 
-	if (pathbegin == NULL) {
-	  path[0] = '\0';
-	  
-	}
-	else {
-	  pathbegin++;	
-	  strcpy(path, pathbegin);
-	}
-	return 0;
-    }
-    target_address[0] = '\0';
-    return -1;
+   if (pathbegin == NULL) {
+     path[0] = '\0';
+
+   }
+   else {
+     pathbegin++;	
+     strcpy(path, pathbegin);
+   }
+   return 0;
+ }
+ target_address[0] = '\0';
+ return -1;
 }
 
 
@@ -599,29 +645,29 @@ int  find_target_address(char * uri, char * target_address, char * path,
  *       Copy the formatted log entry to logstring
  *============================================================*/
 
-void format_log_entry(char * logstring, int sock, char * uri, int size)
-{
-    time_t  now;
-    char    buffer[MAXLINE];
-    struct  sockaddr_in addr;
-    unsigned  long  host;
-    unsigned  char a, b, c, d;
-    int    len = sizeof(addr);
+ void format_log_entry(char * logstring, int sock, char * uri, int size)
+ {
+  time_t  now;
+  char    buffer[MAXLINE];
+  struct  sockaddr_in addr;
+  unsigned  long  host;
+  unsigned  char a, b, c, d;
+  int    len = sizeof(addr);
 
-    now = time(NULL);
-    strftime(buffer, MAXLINE, "%a %d %b %Y %H:%M:%S %Z", localtime(&now));
+  now = time(NULL);
+  strftime(buffer, MAXLINE, "%a %d %b %Y %H:%M:%S %Z", localtime(&now));
 
-    if (getpeername(sock, (struct sockaddr *) & addr, &len)) {
+  if (getpeername(sock, (struct sockaddr *) & addr, &len)) {
       /* something went wrong writing log entry */
-      printf("getpeername failed\n");
-      return;
-    }
+    printf("getpeername failed\n");
+    return;
+  }
 
-    host = ntohl(addr.sin_addr.s_addr);
-    a = host >> 24;
-    b = (host >> 16) & 0xff;
-    c = (host >> 8) & 0xff;
-    d = host & 0xff;
+  host = ntohl(addr.sin_addr.s_addr);
+  a = host >> 24;
+  b = (host >> 16) & 0xff;
+  c = (host >> 8) & 0xff;
+  d = host & 0xff;
 
-    sprintf(logstring, "%s: %d.%d.%d.%d %s %d\n", buffer, a,b,c,d, uri, size);
+  sprintf(logstring, "%s: %d.%d.%d.%d %s %d\n", buffer, a,b,c,d, uri, size);
 }
