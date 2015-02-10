@@ -437,29 +437,33 @@ void *forwarder_SSL(void* args){
 
   fprintf(stderr, "at line: %d\n", __LINE__);
 
-// now pass bytes from client to server 
-    int ckr;
-    ckr = Rio_readn(clientfd, buf1, MAXLINE);
-    fprintf(stderr, "value of Rio_readn(clientfd, buf1, MAXLINE) is: %d\n", ckr);
-    
-    while ( ckr > 0 ){    
-        Rio_writen(serverfd, buf1, MAXLINE);
-     }
-    
-    if (ckr < 0){
-        fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\n", __LINE__);
-      }
-
-  fprintf(stderr, "at line: %d\n", __LINE__);
-
-  numBytes = Rio_readn(serverfd, buf1, MAXLINE);
+  numBytes = Rio_readp(serverfd, buf1, MAXLINE);
   fprintf(stderr, "numBytes: %d\n", numBytes);
   
   while ( numBytes > 0){
       Rio_writen(clientfd, buf1, MAXLINE);
       //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
-      numBytes = Rio_readn(serverfd, buf1, MAXLINE);
+      numBytes = Rio_readp(serverfd, buf1, MAXLINE);
     }
+
+  fprintf(stderr, "at line: %d\n", __LINE__);
+
+  // now pass bytes from client to server 
+    int ckr;
+    ckr = Rio_readp(clientfd, buf1, MAXLINE);
+    fprintf(stderr, "value of Rio_readn(clientfd) (SSL) is: %d at line: %d\n", ckr, __LINE__);
+    
+    while ( ckr > 0 ){    
+        int ckr2 = Rio_writen(serverfd, buf1, MAXLINE);
+        if (ckr2 < 0){
+          Close(serverfd);
+        }
+        fprintf(stderr, "wrote %d many bytes to serverfd (SSL) at line: %d\n", ckr2, __LINE__);
+     }
+    
+    if (ckr < 0){
+        fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\n", __LINE__);
+      }
 
   fprintf(stderr, "at line: %d\n", __LINE__);
     
@@ -491,13 +495,6 @@ void *forwarder(void* args)
 
   Pthread_detach(pthread_self());
 
-  //rio_t server, client;
-  //free(args);
-
-  //Rio_readinitb(&client, clientfd);
-  //Rio_readinitb(&server, serverfd);
-
-  //while( (numBytes = Rio_readnb(&server, buf1, MAXLINE)) >= 0 ) {
   while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
     //while( 1 ) {
       if ( numBytes > 0 ) {       
