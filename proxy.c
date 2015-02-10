@@ -264,7 +264,6 @@ void *webTalk(void* args)
     //write to serverfd to send data to server
     int n;
     n = Rio_writen(serverfd, buf2, MAXLINE);
-    fprintf(stderr, "wrote %d many bytes to serverfd at line: %d\n", n, __LINE__);
     if (n < 0){
       fprintf(stderr, "error sending get request to server\n");
     }
@@ -324,6 +323,9 @@ void *webTalk(void* args)
     if ( (serverfd = Open_clientfd(host, serverPort)) > 0) {
       fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
 
+    // logic for sending CONNECT request headers, claimed to be unneccessary
+
+    /* 
     int break_me = 0;
 
     while (break_me == 0){
@@ -345,11 +347,13 @@ void *webTalk(void* args)
     //write to serverfd to send data to server
     int n;
     n = Rio_writen(serverfd, buf2, MAXLINE);
+    fprintf(stderr, "wrote %d many bytes to serverfd (SSL) at line: %d\n", n, __LINE__);
     if (n <= 0){
       fprintf(stderr, "error sending get request to server: line %d\n", __LINE__);
     }
     fprintf(stderr, "sent server buf2: \n%s", buf2);
 
+    */
     // let the client know we've connected to the server 
 
     char SSL_msg[MAXLINE];
@@ -433,18 +437,6 @@ void *forwarder_SSL(void* args){
 
   fprintf(stderr, "at line: %d\n", __LINE__);
 
-  numBytes = Rio_readn(serverfd, buf1, MAXLINE);
-  fprintf(stderr, "numBytes: %d\n", numBytes);
-  
-  while ( numBytes > 0){
-      Rio_writen(clientfd, buf1, MAXLINE);
-      //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
-      numBytes = Rio_readn(serverfd, buf1, MAXLINE);
-    }
-
-  fprintf(stderr, "at line: %d\n", __LINE__);
-
-
 // now pass bytes from client to server 
     int ckr;
     ckr = Rio_readn(clientfd, buf1, MAXLINE);
@@ -457,6 +449,17 @@ void *forwarder_SSL(void* args){
     if (ckr < 0){
         fprintf(stderr, "error in passing bytes from Client to Server (SSL). LINE: %d\n", __LINE__);
       }
+
+  fprintf(stderr, "at line: %d\n", __LINE__);
+
+  numBytes = Rio_readn(serverfd, buf1, MAXLINE);
+  fprintf(stderr, "numBytes: %d\n", numBytes);
+  
+  while ( numBytes > 0){
+      Rio_writen(clientfd, buf1, MAXLINE);
+      //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
+      numBytes = Rio_readn(serverfd, buf1, MAXLINE);
+    }
 
   fprintf(stderr, "at line: %d\n", __LINE__);
     
