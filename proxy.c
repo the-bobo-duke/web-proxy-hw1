@@ -304,8 +304,6 @@ void *webTalk(void* args)
     else if (buf1[0] == 'C'){
       fprintf(stderr, "\nWe should process a CONNECT request\n");
 
-      memcpy(&buf2, buf1, MAXLINE);
-
       if (rio_return > 0){
         uri = strchr(buf1, ' ');
         uri++;    
@@ -320,106 +318,12 @@ void *webTalk(void* args)
       fprintf(stderr, "parse returns serverPort as: %d\n", serverPort);
       fprintf(stderr, "Host is: %s\n", host);
 
-      if ( (serverfd = Open_clientfd(host, serverPort)) > 0 ) {
-        fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
-      }
+      fprintf(stderr, "Calling secureTalk at line: %d\n", __LINE__);
 
-      int n;
-      n = Rio_writen(serverfd, buf1, MAXLINE);
-
-      strcat(buf1, "\r\n");
-
-      if (n <= 0){
-        fprintf(stderr, "error sending get request to server: line %d\n", __LINE__);
-      }
-      fprintf(stderr, "sent server buf1: \n%s", buf1);
-
-      char SSL_msg[MAXLINE];
-      strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n");
-      int checker = Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
-      if (checker > 0){
-        fprintf(stderr, "successfully wrote HTTP 200 to client. line: %d\n", __LINE__);
-      }
-      else if (checker < 0){
-        fprintf(stderr, "error writing HTTP 200 to client. line: %d\n", __LINE__);
-      }
-
-      int *args3 = malloc(2 * sizeof(args3));
-      args3[0] = clientfd;
-      args3[1] = serverfd;
-      //args3[2] = clientfd2;
-      pthread_t tid3;
-      Pthread_create(&tid3, NULL, &forwarder, args3);
-
-      //pthread_mutex_lock(&mutex);
-
-      while ( (numBytes = Rio_readn(clientfd, buf1, MAXLINE)) > 0) {
-      if ( numBytes > 0 ) {       
-        Rio_writen(serverfd, buf1, MAXLINE);
-      }
-    }
-    if (numBytes < 0){
-      fprintf(stderr, "error line: %d\n", __LINE__);
-    }
-
-     // pthread_mutex_unlock(&mutex);
-
-    //Close(clientfd);
-    //Close(serverfd);
-
-
-    // logic for sending CONNECT request headers, claimed to be unneccessary
-
-    /* 
-    int break_me = 0;
-
-    while (break_me == 0){
-      Rio_readlineb(&client, buf3, MAXLINE);
-      if (buf3[0] == '\r' && buf3[1] == '\n'){
-        ++break_me;
-      } 
-      strcat(buf2, buf3);
-    }
-
-    // suppress keep-alive
-    int size_to_erase = strlen("keep-alive");
-    char closeReplace[size_to_erase];
-    strcpy(closeReplace, "close     \0");
-    while ( strstr(buf2, "keep-alive") != NULL ){
-      strncpy( (strstr(buf2, "keep-alive")), closeReplace, strlen(closeReplace) );
-    }
-
-    //write to serverfd to send data to server
-    int n;
-    n = Rio_writen(serverfd, buf2, MAXLINE);
-    fprintf(stderr, "wrote %d many bytes to serverfd (SSL) at line: %d\n", n, __LINE__);
-    if (n <= 0){
-      fprintf(stderr, "error sending get request to server: line %d\n", __LINE__);
-    }
-    fprintf(stderr, "sent server buf2: \n%s", buf2);
-
-    */
-    // let the client know we've connected to the server 
-
-    // spawn a thread to pass bytes from origin server through to client 
-
-    /*
-    int *args3 = malloc(2 * sizeof(args3));
-    args3[0] = clientfd;
-    args3[1] = serverfd;
-    //args3[2] = clientfd2;
-    pthread_t tid3;
-    Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
-    //forwarder_SSL(args3);
-  */
+      secureTalk(clientfd, client, host, version, serverPort);
   
   }
-
-    //secureTalk(clientfd, client, host, version, serverPort);
-
-    // CONNECT: call a different function, securetalk, for HTTPS
-
-
+  
 //Close(serverfd);
 //Close(clientfd);
 pthread_exit(NULL);
@@ -448,6 +352,69 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   /* clientfd is browser */
   /* serverfd is server */
 
+  //    OPEN TCP CONNECTION ON PORT 443 
+
+      if ( (serverfd = Open_clientfd(host, serverPort)) > 0 ) {
+        fprintf(stderr, "TCP success in CONNECT logic line: %d\n", __LINE__);
+      }
+
+//    SEND CONNECT REQUEST TO SERVER
+      /*
+      int n;
+      strcat(buf1, "\r\n\r\n");
+      //char tosend[MAXLINE]; 
+      //strcpy(tosend, "CONNECT yahoo.com:443\r\n");
+      n = Rio_writen(serverfd, buf1, MAXLINE);
+
+      if (n <= 0){
+        fprintf(stderr, "error sending CONNECT request to server: line %d\n", __LINE__);
+      }
+      fprintf(stderr, "sent server buf1: \n%s", buf1);
+    */
+
+//    SEND HTTP 200 OK TO CLIENT
+
+      char SSL_msg[MAXLINE];
+      strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
+      fprintf(stderr, "SSL_msg is: %s\n", SSL_msg);
+      int checker = Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
+      if (checker > 0){
+        fprintf(stderr, "successfully wrote HTTP 200 to client. ");
+      }
+      else if (checker < 0){
+        fprintf(stderr, "error writing HTTP 200 to client. line: %d\n", __LINE__);
+      }
+
+//    CALL FORWARDER_SSL
+
+      int *args3 = malloc(2 * sizeof(args3));
+      args3[0] = clientfd;
+      args3[1] = serverfd;
+      //args3[2] = clientfd2;
+      pthread_t tid3;
+      shutdown(serverfd, 1);
+      Pthread_create(&tid3, NULL, &forwarder_SSL, args3);
+
+//    SEND BYTES FROM CLIENT TO SERVER
+
+    pthread_mutex_lock(&mutex);
+      //int numBytes2;
+      while ( (numBytes2 = Rio_readp(clientfd, buf1, MAXLINE)) > 0) {
+      if ( numBytes2 > 0 ) {       
+        Rio_writen(serverfd, buf1, numBytes2);
+      }
+    }
+    if (numBytes2 < 0){
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+    shutdown(serverfd, 1);
+
+    pthread_mutex_unlock(&mutex);
+
+    //Close(clientfd);
+    //Close(serverfd);
+
+
 }
 
 /* this function is for passing bytes from origin server to client */
@@ -467,7 +434,49 @@ void *forwarder_SSL(void* args){
     Rio_writep(clientfd, buf1, MAXLINE);
   }*/
 
+
+//    SEND BYTES FROM CLIENT TO SERVER
+/*
+      while ( (numBytes = Rio_readp(clientfd, buf1, MAXLINE)) > 0) {
+      if ( numBytes > 0 ) {       
+        Rio_writen(serverfd, buf1, MAXLINE);
+      }
+    }
+    if (numBytes < 0){
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+*/
+    int cntr1 = 0;
+    fprintf(stderr, "\nat line: %d\n", __LINE__);
+    numBytes = Rio_readp(serverfd, buf1, MAXLINE);
+    fprintf(stderr, "numBytes: %d\n", numBytes);
+    if (numBytes < 0){
+      fprintf(stderr, "error at line: %d\n", __LINE__);
+    }
+
+    while ( numBytes > 0 ){
+      Rio_writen(clientfd, buf1, numBytes);
+      ++cntr1;
+      //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
+      numBytes = Rio_readp(serverfd, buf1, MAXLINE);
+    }
+
+    fprintf(stderr, "at line: %d\n", __LINE__);
+    shutdown(clientfd, 1);
+
+//    SEND BYTES FROM CLIENT TO SERVER
+/*
+      while ( (numBytes = Rio_readp(clientfd, buf1, MAXLINE)) > 0) {
+      if ( numBytes > 0 ) {       
+        Rio_writen(serverfd, buf1, MAXLINE);
+      }
+    }
+    if (numBytes < 0){
+      fprintf(stderr, "error line: %d\n", __LINE__);
+    }
+*/
 // now pass bytes from client to server 
+    /*
     int ckr;
     int cntr2 = 0;
 
@@ -490,21 +499,6 @@ void *forwarder_SSL(void* args){
     }
 
     fprintf(stderr, "at line: %d\n", __LINE__);
-
-    fprintf(stderr, "at line: %d\n", __LINE__);
-    int cntr1 = 0;
-
-    numBytes = Rio_readp(serverfd, buf1, MAXLINE);
-    fprintf(stderr, "numBytes: %d\n", numBytes);
-
-    while ( numBytes >= 0 && cntr1 < 10 ){
-      Rio_writen(clientfd, buf1, MAXLINE);
-      ++cntr1;
-      //fprintf(stderr, "Wrote the following to client fd: %s\n", buf1);
-      numBytes = Rio_readp(serverfd, buf1, MAXLINE);
-    }
-
-    fprintf(stderr, "at line: %d\n", __LINE__);
     
     /*
     else if (numBytes == 0){
@@ -515,12 +509,13 @@ void *forwarder_SSL(void* args){
     }
   */
 
+/*
     if (clientfd){
       Close(clientfd);
     }
     if (serverfd) {
       Close(serverfd);
-    }
+    }*/
     pthread_exit(NULL);
 
   }
