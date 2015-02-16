@@ -239,7 +239,7 @@ void *webTalk(void* args)
     serverfd = Open_clientfd(host, serverPort);
     
     int break_me = 0;
-
+/*
     while (break_me == 0){
       Rio_readlineb(&client, buf3, MAXLINE);
       if (buf3[0] == '\r' && buf3[1] == '\n'){
@@ -258,7 +258,21 @@ void *webTalk(void* args)
     while ( strstr(buf2, "keep-alive") != NULL ){
       strncpy( (strstr(buf2, "keep-alive")), closeReplace, strlen(closeReplace) );
     }
-    
+  */ 
+
+  // JUST DROP KEEP-ALIVE, DON'T REPLACE IT WITH CLOSE
+
+    while (break_me == 0){
+      Rio_readlineb(&client, buf3, MAXLINE);
+      if ( !strcasecmp(buf3, "Connection: Keep-Alive\r\n") || !strcasecmp(buf3, "Proxy-Connection: Keep-Alive\r\n") ){
+        continue;
+      }
+      if (buf3[0] == '\r' && buf3[1] == '\n'){
+        ++break_me;
+      } 
+      strcat(buf2, buf3);
+    }
+
     fprintf(stderr, "buf2 after suppression: \n%s", buf2); 
 
     //write to serverfd to send data to server
@@ -327,6 +341,7 @@ void *webTalk(void* args)
 //Close(serverfd);
 //Close(clientfd);
 pthread_exit(NULL);
+
 }
 
 
@@ -378,7 +393,7 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
       strcpy(SSL_msg, "HTTP/1.1 200 OK\r\n\r\n");
       fprintf(stderr, "SSL_msg is: %s\n", SSL_msg);
       int checker = Rio_writen(clientfd, SSL_msg, strlen(SSL_msg));
-      if (checker > 0){
+      if (checker == strlen(SSL_msg)){
         fprintf(stderr, "successfully wrote HTTP 200 to client. ");
       }
       else if (checker < 0){
@@ -533,14 +548,14 @@ void *forwarder_SSL(void* args){
 
     Pthread_detach(pthread_self());
     //pthread_mutex_lock(&mutex);
-    while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) >= 0) {
+    while ( (numBytes = Rio_readn(serverfd, buf1, MAXLINE)) > 0) {
       if ( numBytes > 0 ) {       
         Rio_writen(clientfd, buf1, MAXLINE);
       }
     }
-    if (numBytes < 0){
+    if (numBytes <= 0){
       fprintf(stderr, "error line: %d\n", __LINE__);
-      //Close(serverfd);
+      Close(serverfd);
     }
     //pthread_mutex_unlock(&mutex);
       /*
