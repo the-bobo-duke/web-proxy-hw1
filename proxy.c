@@ -350,6 +350,12 @@ pthread_exit(NULL);
 
 void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int serverPort)
 {
+
+  // ALSO NEED TO *NOT* FORWARD THE REST OF THE REQUEST FROM BROWSER TO SERVER
+  // TURNS OUT THERE'S OTHER STUFF IN THE SSL REQUEST OTHER THAN THE "CONNECT" LINE
+  // DON'T FORWARD IT LIKE YOU DO NOW, THAT CONFUSES THE ORIGIN SERVER
+
+
   int serverfd, numBytes1, numBytes2;
   int tries;
   rio_t server;
